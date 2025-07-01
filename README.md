@@ -2,6 +2,14 @@
 
 Enterprise-grade Ansible inventory management with unified CLI, automated lifecycle management, and comprehensive validation.
 
+## 🆕 **New User? Start Here!**
+
+**Want to add a new system to the inventory?** 
+👉 **[Simple Guide: Adding New Systems](docs/ADDING_SYSTEMS.md)**
+
+This guide walks you through the complete workflow:
+1. Add system to CSV → 2. Generate inventory → 3. Commit to git → 4. Push changes
+
 ## 🚀 **Quick Start**
 
 ```bash

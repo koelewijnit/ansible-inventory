@@ -1,0 +1,164 @@
+site_name: Ansible Inventory Management
+site_description: Enterprise-grade Ansible inventory management with unified CLI
+site_author: Your Organization
+site_url: https://gitlab.com/company/ansible-inventory-cli
+
+# Repository
+repo_name: company/ansible-inventory-cli
+repo_url: https://gitlab.com/company/ansible-inventory-cli
+edit_uri: edit/main/docs/
+
+# Theme
+theme:
+  name: material
+  language: en
+  palette:
+    # Palette toggle for automatic mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to system preference
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.instant.result
+    - navigation.instant.suggest
+    - navigation.instant.term
+    - navigation.instant.words
+    - navigation.instant.loading
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - navigation.footer
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/gitlab
+    edit: material/pencil
+    view: material/eye
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+    - Adding New Systems: getting-started/adding-systems.md
+    - First Steps: getting-started/first-steps.md
+  - User Guide:
+    - Overview: user-guide/overview.md
+    - CLI Commands: user-guide/cli-commands.md
+    - CSV Management: user-guide/csv-management.md
+    - Inventory Import: user-guide/inventory-import.md
+    - Health Monitoring: user-guide/health-monitoring.md
+    - Lifecycle Management: user-guide/lifecycle-management.md
+  - Development:
+    - Setup: development/setup.md
+    - Workflow: development/workflow.md
+    - Testing: development/testing.md
+    - Contributing: development/contributing.md
+  - Operations:
+    - Deployment: operations/deployment.md
+    - CI/CD Pipeline: operations/gitlab-cicd.md
+    - Monitoring: operations/monitoring.md
+    - Troubleshooting: operations/troubleshooting.md
+  - Reference:
+    - Configuration: reference/configuration.md
+    - CSV Format: reference/csv-format.md
+    - API Reference: reference/api.md
+    - Makefile Commands: reference/makefile.md
+  - Quick Reference: quick-reference.md
+
+# Plugins
+plugins:
+  - search
+  - include-markdown-plugin:
+      base_path: docs
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Extra CSS and JS
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+# Copyright
+copyright: Copyright &copy; 2024 Your Organization
+
+# Analytics (optional)
+# google_analytics:
+#   - G-XXXXXXXXXX
+#   - auto 

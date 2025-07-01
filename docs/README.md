@@ -7,6 +7,7 @@ Welcome to the comprehensive documentation for the Ansible Inventory Management 
 ### Getting Started
 - [Installation Guide](installation.md) - Setup and installation instructions
 - [Quick Start](../README.md) - Basic usage and examples
+- [Adding New Systems](ADDING_SYSTEMS.md) - Simple guide for adding systems to inventory
 - [User Guide](../USER_GUIDE.md) - Complete CLI reference
 
 ### Development & Operations
@@ -32,6 +33,7 @@ Welcome to the comprehensive documentation for the Ansible Inventory Management 
 
 | I want to... | Go to |
 |---------------|-------|
+| **Add a new system** | [Adding New Systems](ADDING_SYSTEMS.md) |
 | **Install and run** | [Installation Guide](installation.md) |
 | **Set up CI/CD** | [GitLab Pipeline Guide](gitlab-cicd.md) |
 | **Develop locally** | [Development Setup](development.md) |
