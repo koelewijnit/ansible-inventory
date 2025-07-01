@@ -24,15 +24,15 @@ data:
   # CSV headers in logical order - modify to match your CSV structure
   # NOTE: These should match your actual CSV file headers exactly
   csv_template_headers:
-    - hostname          # Required: Unique host identifier
+    - hostname          # Optional when using cname as inventory_key
     - environment       # Required: Environment name
     - status           # Required: Host status (active/decommissioned)
-    - cname            # Optional: Canonical name/FQDN
+    - cname            # Optional when using hostname as inventory_key, Required when using cname as inventory_key
     - instance         # Optional: Instance number
     - datacenter       # Optional: Datacenter/location code
     - ssl_port         # Optional: SSL port number
     - application_service  # Optional: Service type
-    - product_id       # Optional: Product identifier
+    - product_id       # Optional: Product identifier (supports comma-separated values for multiple products)
     - primary_application  # Optional: Primary application
     - function         # Optional: Host function/role
     - batch_number     # Optional: Patch batch number
@@ -88,8 +88,11 @@ hosts:
   
   # Inventory key configuration - which field to use as primary identifier
   # Options: "hostname" or "cname"
-  # hostname: Use the hostname field as the key in inventory files
-  # cname: Use the cname field (falls back to hostname if cname empty)
+  # hostname: Use the hostname field as the key in inventory files (cname is fallback if hostname empty)
+  # cname: Use the cname field as the key in inventory files (hostname is fallback if cname empty)
+  # NOTE: When using "cname" as inventory_key, hostname becomes optional
+  #       When using "hostname" as inventory_key, cname becomes optional
+  #       At least one of hostname or cname must always be provided
   inventory_key: "hostname"
   
   # Grace periods for cleanup after decommission (days)

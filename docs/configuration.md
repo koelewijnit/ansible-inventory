@@ -67,10 +67,10 @@ The `data.csv_template_headers` section defines the expected CSV structure:
 ```yaml
 data:
   csv_template_headers:
-    - hostname          # Required
+    - hostname          # Optional when using cname as inventory_key
     - environment       # Required
     - status           # Required
-    - cname            # Optional
+    - cname            # Optional when using hostname as inventory_key, Required when using cname as inventory_key
     - instance         # Optional
     - datacenter       # Optional
     # ... add your custom fields
@@ -92,6 +92,63 @@ hosts:
   grace_periods:
     production: 90
     staging: 30        # Add for custom environments
+```
+
+### Inventory Key Configuration
+
+The `inventory_key` setting determines which field is used as the primary identifier:
+
+- **`"hostname"`**: Uses hostname as primary key, with cname as fallback if hostname is empty
+- **`"cname"`**: Uses cname as primary key, with hostname as fallback if cname is empty
+
+**Field Requirements:**
+- When `inventory_key: "hostname"`: hostname is preferred but optional, cname is optional
+- When `inventory_key: "cname"`: cname is preferred but optional, hostname is optional  
+- **At least one** of hostname or cname must always be provided for each host
+
+This allows you to:
+- Use CNAMEs as primary identifiers when you have a DNS-centric infrastructure
+- Fall back gracefully when only one identifier is available
+- Maintain backward compatibility with hostname-based configurations
+
+### Multi-Product Support
+
+The system supports multiple products per host by using comma-separated values in the `product_id` field:
+
+```csv
+hostname,environment,status,cname,instance,datacenter,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
+idm01-prd,production,active,idm01.company.com,1,datacenter-east,636,identity_management,"edirectory,netiq_idm",NetIQ IDM,directory,1,manual,identity-servers,
+web01-prd,production,active,web01.company.com,1,datacenter-east,443,web_server,nginx,nginx,frontend,1,auto,web-servers,
+```
+
+**Features:**
+- **Multiple Products**: Use comma-separated values like `"edirectory,netiq_idm,ldap_proxy"`
+- **Product Groups**: Automatically creates inventory groups for each product (e.g., `product_edirectory`, `product_netiq_idm`)
+- **Product Queries**: Query hosts by specific products using Ansible patterns
+- **Structured Data**: Host vars include detailed product information
+
+**Generated Inventory Groups:**
+```yaml
+product_edirectory:
+  hosts:
+    idm01-prd: null
+    idm02-prd: null
+
+product_netiq_idm:
+  hosts:
+    idm01-prd: null
+    idm02-prd: null
+    idm03-prd: null
+```
+
+**Generated Host Vars:**
+```yaml
+# host_vars/idm01-prd.yml
+product_id: "edirectory,netiq_idm"
+products:
+  installed: ["edirectory", "netiq_idm"]
+  primary: "edirectory"
+  count: 2
 ```
 
 ## Environment Variable Overrides
