@@ -34,9 +34,9 @@ class InventoryManager:
     """Manages core inventory operations and file generation."""
 
     def __init__(
-        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None, inventory_key: str = "hostname"
     ) -> None:
-        self.config = InventoryConfig.create_default()
+        self.config = InventoryConfig.create_default(inventory_key=inventory_key)
         self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.stats = InventoryStats()
@@ -128,7 +128,7 @@ class InventoryManager:
             "environment": host.environment,
             "application_service": host.application_service or "",
             "product_id": host.product_id or "",
-            "location": host.location or "",
+            "datacenter": host.datacenter or "",
             "instance": host.instance or "",
             "status": host.status,
             "cmdb_discovery": {
@@ -175,17 +175,18 @@ class InventoryManager:
         inventory: Dict[str, Any] = defaultdict(lambda: {"hosts": {}})
 
         for host in hosts:
-            inventory[environment]["hosts"][host.hostname] = None
+            host_key = host.get_inventory_key_value(self.config.inventory_key)
+            inventory[environment]["hosts"][host_key] = None
 
             if host.application_service:
                 app_group = host.get_app_group_name()
                 if app_group:
-                    inventory[app_group]["hosts"][host.hostname] = None
+                    inventory[app_group]["hosts"][host_key] = None
 
             if host.product_id:
                 prod_group = host.get_product_group_name()
                 if prod_group:
-                    inventory[prod_group]["hosts"][host.hostname] = None
+                    inventory[prod_group]["hosts"][host_key] = None
 
         return dict(inventory)
 

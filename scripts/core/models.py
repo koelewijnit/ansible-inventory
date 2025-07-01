@@ -21,7 +21,7 @@ class Host:
     status: str = "active"
     application_service: Optional[str] = None
     product_id: Optional[str] = None
-    location: Optional[str] = None
+    datacenter: Optional[str] = None
     instance: Optional[str] = None
     batch_number: Optional[str] = None
     patch_mode: Optional[str] = None
@@ -105,7 +105,7 @@ class Host:
         for field_name in [
             "application_service",
             "product_id",
-            "location",
+            "datacenter",
             "instance",
             "batch_number",
             "patch_mode",
@@ -146,6 +146,12 @@ class Host:
             return f"product_{self.product_id}"
         return None
 
+    def get_inventory_key_value(self, key_type: str = "hostname") -> str:
+        """Get the value to use as inventory key based on the key type."""
+        if key_type == "cname" and self.cname:
+            return self.cname
+        return self.hostname
+
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary for CSV/YAML output."""
         return {
@@ -154,7 +160,7 @@ class Host:
             "status": self.status,
             "application_service": self.application_service or "",
             "product_id": self.product_id or "",
-            "location": self.location or "",
+            "datacenter": self.datacenter or "",
             "instance": self.instance or "",
             "batch_number": self.batch_number or "",
             "patch_mode": self.patch_mode or "",
@@ -177,7 +183,7 @@ class Host:
             "status",
             "application_service",
             "product_id",
-            "location",
+            "datacenter",
             "instance",
             "batch_number",
             "patch_mode",
@@ -296,9 +302,10 @@ class InventoryConfig:
     valid_status_values: List[str]
     patch_windows: Dict[str, str]
     grace_periods: Dict[str, int]
+    inventory_key: str = "hostname"
 
     @classmethod
-    def create_default(cls) -> "InventoryConfig":
+    def create_default(cls, inventory_key: str = "hostname") -> "InventoryConfig":
         """Create default configuration."""
         project_root = Path(__file__).parent.parent
         return cls(
@@ -323,6 +330,7 @@ class InventoryConfig:
                 "test": 14,
                 "development": 7,
             },
+            inventory_key=inventory_key,
         )
 
     def validate(self) -> ValidationResult:

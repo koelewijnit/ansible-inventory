@@ -631,7 +631,7 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
         "status",
         "cname",
         "instance",
-        "location",
+        "datacenter",
         "ssl_port",
         "application_service",
         "product_id",
@@ -704,7 +704,7 @@ def get_csv_template() -> str:
     Headers are organized logically:
     - Required fields first (hostname, environment, status)
     - Identity fields (cname, instance)
-    - Infrastructure fields (location, ssl_port)
+    - Infrastructure fields (datacenter, ssl_port)
     - Application fields (application_service, product_id, primary_application, function)
     - Operational fields (batch_number, patch_mode, dashboard_group)
     - Lifecycle fields (decommission_date)
@@ -713,7 +713,7 @@ def get_csv_template() -> str:
         String containing CSV template
     """
     return (
-        "hostname,environment,status,cname,instance,location,ssl_port,"
+        "hostname,environment,status,cname,instance,datacenter,ssl_port,"
         "application_service,product_id,primary_application,function,"
         "batch_number,patch_mode,dashboard_group,decommission_date\n"
         "# Example hosts (remove # to activate):\n"

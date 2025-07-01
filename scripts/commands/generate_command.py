@@ -56,17 +56,30 @@ class GenerateCommand(BaseCommand):
             action="store_true",
             help="Show what would be generated without creating files",
         )
+        parser.add_argument(
+            "--inventory-key",
+            choices=["hostname", "cname"],
+            default="hostname",
+            help="Key to use for inventory host entries (default: hostname)",
+        )
 
     def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the generate command."""
         try:
             self.logger.info("🎯 Starting inventory generation")
+            
+            # Create inventory manager with the specified inventory key
+            inventory_manager = InventoryManager(
+                self.csv_file, 
+                self.logger, 
+                inventory_key=getattr(args, 'inventory_key', 'hostname')
+            )
 
             if args.dry_run:
-                return self._dry_run_generate(args)
+                return self._dry_run_generate(args, inventory_manager)
 
             # Generate inventories using the manager
-            stats = self.inventory_manager.generate_inventories(
+            stats = inventory_manager.generate_inventories(
                 output_dir=args.output_dir,
                 host_vars_dir=args.host_vars_dir,
                 environments=args.environments,
@@ -87,12 +100,15 @@ class GenerateCommand(BaseCommand):
                     "inventory_dir": str(args.output_dir),
                     "host_vars_dir": str(args.host_vars_dir),
                 },
+                "inventory_key": getattr(args, 'inventory_key', 'hostname'),
             }
 
             return CommandResult(
                 success=True,
                 data=result_data,
-                message="✅ Generated inventories in {}".format(args.output_dir),
+                message="✅ Generated inventories in {} using {} as inventory key".format(
+                    args.output_dir, getattr(args, 'inventory_key', 'hostname')
+                ),
             ).to_dict()
 
         except FileNotFoundError as e:
@@ -105,11 +121,11 @@ class GenerateCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _dry_run_generate(self, args: Any) -> Dict[str, Any]:
+    def _dry_run_generate(self, args: Any, inventory_manager: InventoryManager) -> Dict[str, Any]:
         """Perform a dry run to show what would be generated."""
         try:
             # Load hosts to show what would be processed
-            hosts = self.inventory_manager.load_hosts()
+            hosts = inventory_manager.load_hosts()
 
             # Group by environment
             env_stats = {}
@@ -192,6 +208,8 @@ class GenerateCommand(BaseCommand):
             "   ansible-inventory-cli generate --environments production test",
             "   # Custom output directory",
             "   ansible-inventory-cli generate --output-dir custom_inventory",
+            "   # Use CNAME as inventory key instead of hostname",
+            "   ansible-inventory-cli generate --inventory-key cname",
         ]
         return "\n".join(lines)
 

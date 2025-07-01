@@ -49,6 +49,10 @@ DEFAULT_STATUS: str = "active"
 DECOMMISSIONED_STATUS: str = "decommissioned"
 VALID_PATCH_MODES: List[str] = ["auto", "manual"]
 
+# Inventory key configuration
+VALID_INVENTORY_KEYS: List[str] = ["hostname", "cname"]
+DEFAULT_INVENTORY_KEY: str = "hostname"
+
 # Group naming patterns
 GROUP_PREFIXES: Dict[str, str] = {
     "application": "app_",
@@ -187,6 +191,16 @@ def get_patching_window(batch_number: str) -> str:
 def get_grace_period(environment: str) -> int:
     """Get grace period for environment."""
     return GRACE_PERIODS.get(environment, 30)
+
+
+def validate_inventory_key(inventory_key: str) -> bool:
+    """Validate if inventory key is in the allowed list."""
+    return inventory_key in VALID_INVENTORY_KEYS
+
+
+def get_default_inventory_key() -> str:
+    """Get the default inventory key."""
+    return DEFAULT_INVENTORY_KEY
 
 
 class ErrorMessages:
