@@ -14,9 +14,10 @@ SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from commands import BaseCommand, CommandResult
 from core import get_logger
 from managers.validation_manager import ValidationManager
+
+from .base import BaseCommand, CommandResult
 
 
 class ValidateCommand(BaseCommand):
@@ -42,10 +43,54 @@ class ValidateCommand(BaseCommand):
             action="store_true",
             help="Validate only directory structure and configuration",
         )
+        parser.add_argument(
+            "--template",
+            action="store_true",
+            help="Show CSV template with required headers",
+        )
+        parser.add_argument(
+            "--create-csv",
+            type=Path,
+            metavar="FILE",
+            help="Create a new CSV file with template content",
+        )
+        parser.add_argument(
+            "--overwrite",
+            action="store_true",
+            help="Overwrite existing file when using --create-csv",
+        )
 
     def execute(self, args) -> Dict[str, Any]:
         """Execute the validate command."""
         try:
+            # Handle CSV creation request
+            if args.create_csv:
+                from core.utils import create_csv_file
+                
+                try:
+                    create_csv_file(args.create_csv, args.overwrite)
+                    return CommandResult(
+                        success=True,
+                        data={"created_file": str(args.create_csv)},
+                        message=f"✅ Created CSV file: {args.create_csv}",
+                    ).to_dict()
+                except Exception as e:
+                    return CommandResult(
+                        success=False,
+                        error=f"Failed to create CSV file: {e}",
+                    ).to_dict()
+
+            # Handle template request
+            if args.template:
+                from core.utils import get_csv_template
+
+                template = get_csv_template()
+                return CommandResult(
+                    success=True,
+                    data={"template": template},
+                    message="CSV template generated",
+                ).to_dict()
+
             self.logger.info("✅ Starting infrastructure validation")
 
             validation_results = {}
@@ -146,6 +191,26 @@ class ValidateCommand(BaseCommand):
             return f"❌ Validation failed: {result.get('error', 'Unknown error')}"
 
         data = result.get("data", {})
+
+        # Handle CSV creation output
+        if "created_file" in data:
+            file_path = data["created_file"]
+            lines = [
+                f"✅ CSV file created successfully: {file_path}",
+                "",
+                "📝 Next steps:",
+                "1. Edit the CSV file to add your host data",
+                "2. Remove the # comments from example rows to activate them",
+                "3. Run 'ansible-inventory-cli validate' to check your data",
+                "4. Run 'ansible-inventory-cli generate' to create inventory files",
+                "",
+                "💡 Tip: Use 'ansible-inventory-cli validate --template' to see the CSV format",
+            ]
+            return "\n".join(lines)
+
+        # Handle template output
+        if "template" in data:
+            return f"📄 CSV Template:\n\n{data['template']}"
         validation_results = data.get("validation_results", {})
         summary = data.get("summary", {})
 

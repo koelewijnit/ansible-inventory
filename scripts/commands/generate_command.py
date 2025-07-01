@@ -10,9 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from commands import BaseCommand, CommandResult
 from core import get_logger
 from managers.inventory_manager import InventoryManager
+
+from .base import BaseCommand, CommandResult
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
@@ -167,6 +168,31 @@ class GenerateCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
+    def _print_usage_examples(self, output_dir: str) -> str:
+        """Generate usage examples for the generated inventory."""
+        lines = [
+            "",
+            "🎯 **Test the comprehensive inventory:**",
+            f"   ansible-inventory -i {output_dir}/production.yml --list",
+            f"   ansible-inventory -i {output_dir}/production.yml --graph",
+            f"   ansible app_identity_management -i {output_dir}/production.yml --list-hosts",
+            f"   ansible product_directory_service_a -i {output_dir}/production.yml --list-hosts",
+            "",
+            "🔧 **Enterprise Features - CMDB & Patch Management:**",
+            f"   ansible-inventory -i {output_dir}/production.yml --host prd-dirsvc1-use1-01",
+            f"   ansible production -i {output_dir}/production.yml -m debug -a 'var=batch_number'",
+            f"   ansible production -i {output_dir}/production.yml -m debug -a 'var=cmdb_discovery'",
+            "",
+            "💡 **Advanced Usage:**",
+            "   # Use custom CSV file",
+            "   ansible-inventory-cli generate --csv-file inventory_source/hosts_production.csv",
+            "   # Generate specific environments only",
+            "   ansible-inventory-cli generate --environments production test",
+            "   # Custom output directory",
+            "   ansible-inventory-cli generate --output-dir custom_inventory",
+        ]
+        return "\n".join(lines)
+
     def format_text_output(self, result: Dict[str, Any]) -> str:
         """Format result for text output."""
         if not result.get("success", False):
@@ -202,6 +228,8 @@ class GenerateCommand(BaseCommand):
 
         else:
             stats = data.get("statistics", {})
+            output_dir = data.get("output_paths", {}).get("inventory_dir", "inventory")
+            
             lines = [
                 "✅ INVENTORY GENERATION COMPLETED",
                 f"📊 Statistics:",
@@ -210,7 +238,7 @@ class GenerateCommand(BaseCommand):
                 f"   Decommissioned: {stats.get('decommissioned_hosts', 0)}",
                 f"   Generation time: {stats.get('generation_time', 0)}s",
                 "",
-                f"🎯 Generated inventories in {data.get('output_paths', {}).get('inventory_dir', 'inventory')}",
+                f"🎯 Generated inventories in {output_dir}",
             ]
 
             env_counts = stats.get("environment_counts", {})
@@ -219,5 +247,8 @@ class GenerateCommand(BaseCommand):
                 lines.append("Environment breakdown:")
                 for env, count in sorted(env_counts.items()):
                     lines.append(f"  {env}: {count}")
+
+            # Add usage examples
+            lines.append(self._print_usage_examples(output_dir))
 
             return "\n".join(lines)

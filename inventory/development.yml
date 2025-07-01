@@ -1,5 +1,3 @@
 ---
-all:
-  children:
-    development:
-      hosts: {}
+# Development environment inventory
+# Add hosts and groups here 

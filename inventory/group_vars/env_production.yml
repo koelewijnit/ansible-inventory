@@ -1,2 +1,2 @@
 ---
-environment: prd
+# Group variables for production environment 

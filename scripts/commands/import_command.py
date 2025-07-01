@@ -16,8 +16,9 @@ from typing import Any, Dict, List, Optional, Set
 
 import yaml
 
-from commands import BaseCommand, CommandResult
 from core import ENVIRONMENTS, PROJECT_ROOT, get_logger
+
+from .base import BaseCommand, CommandResult
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
@@ -270,7 +271,7 @@ class ImportCommand(BaseCommand):
             r"loadbalancer|lb|haproxy": "load_balancer",
             r"vault|secret": "vault",
             r"kafka|message|broker": "message_broker",
-            r"identity|idm|ldap|ad": "identity_management",
+            r"identity|directory|ldap|ad": "directory_service_a",
             r"mail|email|smtp": "mail_server",
             r"k8s|kubernetes": "k8s_cluster",
         }

@@ -26,7 +26,7 @@ class TestHostManager(unittest.TestCase):
             data = [
                 ['hostname', 'environment', 'status', 'decommission_date'],
                 ['test-host-01', 'production', 'active', ''],
-                ['test-host-02', 'development', 'decommissioned', '2024-01-01'],
+                ['test-host-02', 'development', 'decommissioned', '2025-01-01'],
                 ['test-host-03', 'production', 'decommissioned', (datetime.now() - timedelta(days=100)).strftime('%Y-%m-%d')]
             ]
         with self.csv_file.open('w', newline='') as f:

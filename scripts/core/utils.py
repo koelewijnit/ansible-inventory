@@ -18,6 +18,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import yaml
 
+from .models import ValidationResult
+
 # Add scripts directory to path for imports
 SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
@@ -555,3 +557,203 @@ def get_file_age_days(file_path: str) -> Optional[int]:
         return age.days
     except (OSError, FileNotFoundError):
         return None
+
+
+def validate_csv_headers(
+    csv_file: Path, expected_headers: List[str]
+) -> ValidationResult:
+    """
+    Validate CSV headers against expected fields.
+
+    Args:
+        csv_file: Path to CSV file
+        expected_headers: List of expected header names
+
+    Returns:
+        ValidationResult with any issues found
+    """
+    result = ValidationResult()
+
+    try:
+        with csv_file.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            actual_headers = reader.fieldnames or []
+
+            # Check for missing required headers
+            missing_headers = set(expected_headers) - set(actual_headers)
+            if missing_headers:
+                result.add_error(
+                    f"Missing required headers: {', '.join(sorted(missing_headers))}"
+                )
+
+            # Check for unexpected headers (warnings)
+            unexpected_headers = set(actual_headers) - set(expected_headers)
+            if unexpected_headers:
+                result.add_warning(
+                    f"Unexpected headers (will be ignored): {', '.join(sorted(unexpected_headers))}"
+                )
+
+            # Check for case-insensitive matches
+            actual_lower = {h.lower(): h for h in actual_headers}
+            expected_lower = {h.lower(): h for h in expected_headers}
+
+            case_mismatches = []
+            for expected in expected_headers:
+                if (
+                    expected.lower() in actual_lower
+                    and expected != actual_lower[expected.lower()]
+                ):
+                    case_mismatches.append(
+                        f"'{expected}' vs '{actual_lower[expected.lower()]}'"
+                    )
+
+            if case_mismatches:
+                result.add_warning(
+                    f"Case mismatches found: {', '.join(case_mismatches)}"
+                )
+
+    except Exception as e:
+        result.add_error(f"Error reading CSV file: {e}")
+
+    return result
+
+
+def validate_csv_structure(csv_file: Path) -> ValidationResult:
+    """
+    Comprehensive CSV validation including headers, data types, and structure.
+
+    Args:
+        csv_file: Path to CSV file to validate
+
+    Returns:
+        ValidationResult with detailed validation results
+    """
+    from .models import Host
+
+    result = ValidationResult()
+
+    # Expected headers based on Host model
+    expected_headers = [
+        "hostname",
+        "environment",
+        "status",
+        "application_service",
+        "product_id",
+        "location",
+        "instance",
+        "batch_number",
+        "patch_mode",
+        "dashboard_group",
+        "primary_application",
+        "function",
+        "ssl_port",
+        "decommission_date",
+        "cname",
+    ]
+
+    # Validate headers first
+    header_validation = validate_csv_headers(csv_file, expected_headers)
+    result.errors.extend(header_validation.errors)
+    result.warnings.extend(header_validation.warnings)
+
+    if not result.is_valid:
+        return result
+
+    # Validate data rows
+    try:
+        with csv_file.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+
+            row_errors = []
+            row_warnings = []
+            valid_rows = 0
+            total_rows = 0
+
+            for row_num, row in enumerate(reader, start=2):
+                total_rows += 1
+                hostname = row.get("hostname", "").strip()
+
+                # Skip empty rows and comments
+                if not hostname or hostname.startswith("#"):
+                    continue
+
+                try:
+                    # Try to create Host object (this validates all fields)
+                    Host.from_csv_row(row)
+                    valid_rows += 1
+                except ValueError as e:
+                    row_errors.append(f"Row {row_num} ({hostname}): {e}")
+                except Exception as e:
+                    row_errors.append(
+                        f"Row {row_num} ({hostname}): Unexpected error - {e}"
+                    )
+
+            # Add summary
+            if row_errors:
+                result.errors.extend(row_errors)
+                result.add_error(
+                    f"CSV validation failed: {len(row_errors)} invalid rows out of {total_rows} total rows"
+                )
+            else:
+                result.add_warning(
+                    f"CSV validation passed: {valid_rows} valid rows processed"
+                )
+
+    except Exception as e:
+        result.add_error(f"Error reading CSV file: {e}")
+
+    return result
+
+
+def get_csv_template() -> str:
+    """
+    Get a CSV template with all required headers and example data.
+
+    Returns:
+        String containing CSV template
+    """
+    return """hostname,cname,environment,group_path,application_service,product_id,batch_number,patch_mode,dashboard_group,primary_application,function,location,instance,ssl_port,status,decommission_date
+# Example hosts (remove # to activate):
+# prd-web-use1-01,,production,,web,webapp,1,auto,Web,WebApp,frontend,us-east-1,1,443,active,
+# dev-db-use1-01,,development,,db,postgres,2,manual,DB,Database,backend,us-east-1,2,5432,active,
+# tst-app-use1-01,,test,,app,appsvc,3,auto,API,AppService,api,us-east-1,3,8080,active,
+# acc-mon-use1-01,,acceptance,,monitoring,mon,4,manual,Monitoring,Monitoring,infra,us-east-1,4,9090,active,
+
+# Required fields: hostname, environment, status
+# Optional fields: all others
+# Data types: instance and batch_number must be integers
+# Status values: active, decommissioned
+# Environment values: production, development, test, acceptance
+# Patch modes: auto, manual
+"""
+
+def create_csv_file(file_path: Path, overwrite: bool = False) -> bool:
+    """
+    Create a new CSV file with template content.
+
+    Args:
+        file_path: Path where to create the CSV file
+        overwrite: Whether to overwrite existing file
+
+    Returns:
+        True if file was created successfully, False otherwise
+    """
+    try:
+        # Check if file exists and handle overwrite
+        if file_path.exists() and not overwrite:
+            raise FileExistsError(f"File {file_path} already exists. Use --overwrite to replace it.")
+        
+        # Create parent directories if they don't exist
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Get template content
+        template_content = get_csv_template()
+        
+        # Write the file
+        with file_path.open('w', encoding='utf-8') as f:
+            f.write(template_content)
+        
+        return True
+        
+    except Exception as e:
+        raise ValueError(f"Failed to create CSV file: {e}")

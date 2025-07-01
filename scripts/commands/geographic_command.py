@@ -13,8 +13,10 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from commands import BaseCommand, CommandResult
 from core import get_logger
+from core.geographic import GeographicManager
+
+from .base import BaseCommand, CommandResult
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:

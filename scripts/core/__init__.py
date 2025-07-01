@@ -30,6 +30,7 @@ from .models import Host, InventoryConfig, InventoryStats, ValidationResult
 from .utils import (
     create_backup_file,
     ensure_directory_exists,
+    get_csv_template,
     get_hosts_by_environment,
     get_hosts_by_status,
     get_logger,
@@ -38,6 +39,8 @@ from .utils import (
     save_yaml_file,
     setup_logging,
     test_ansible_inventory,
+    validate_csv_headers,
+    validate_csv_structure,
     validate_environment_decorator,
     validate_hostname_decorator,
 )
@@ -64,6 +67,9 @@ __all__ = [
     "load_csv_data",
     "validate_hostname_decorator",
     "validate_environment_decorator",
+    "validate_csv_headers",
+    "validate_csv_structure",
+    "get_csv_template",
     "load_hosts_from_csv",
     "get_hosts_by_environment",
     "get_hosts_by_status",

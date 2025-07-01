@@ -33,53 +33,55 @@ python3 scripts/create_application_group_vars.py
 
 ### **Cross-Product (Functional) Targeting**
 ```bash
-# ALL identity management systems (NetIQ + eDirectory + RHDS)
-ansible app_identity_management -i inventory/production_simple.yml --list-hosts
+# ALL directory services (A, B, C)
+ansible app_identity_management -i inventory/production.yml --list-hosts
 
 # ALL web servers (Apache + Nginx + other web servers)
-ansible app_web_server -i inventory/production_simple.yml --list-hosts
+ansible app_web_server -i inventory/production.yml --list-hosts
 
 # ALL databases (PostgreSQL + MongoDB + other databases)  
-ansible app_database -i inventory/production_simple.yml --list-hosts
+ansible app_database -i inventory/production.yml --list-hosts
 
 # ALL container infrastructure (K8s masters + workers)
-ansible app_container_orchestrator,app_container_worker -i inventory/production_simple.yml --list-hosts
+ansible app_container_orchestrator,app_container_worker -i inventory/production.yml --list-hosts
 
 # ALL monitoring systems (Prometheus + Grafana + ELK)
-ansible app_monitoring_metrics,app_monitoring_visualization,app_monitoring_logging -i inventory/production_simple.yml --list-hosts
+ansible app_monitoring_metrics,app_monitoring_visualization,app_monitoring_logging -i inventory/production.yml --list-hosts
 ```
 
 ### **Product-Specific Targeting**
 ```bash
-# ONLY NetIQ IDM hosts
-ansible product_netiq_idm -i inventory/production_simple.yml --list-hosts
+# ONLY directory service A hosts
+ansible product_directory_service_a -i inventory/production.yml --list-hosts
 
 # ONLY Apache HTTP servers (not Nginx)
-ansible product_apache_httpd -i inventory/production_simple.yml --list-hosts
+ansible product_apache_httpd -i inventory/production.yml --list-hosts
 
 # ONLY PostgreSQL databases (not MongoDB)
-ansible product_postgresql -i inventory/production_simple.yml --list-hosts
+ansible product_postgresql -i inventory/production.yml --list-hosts
 
 # ONLY Kubernetes masters
-ansible product_kubernetes -l "*master*" -i inventory/production_simple.yml --list-hosts
+ansible product_kubernetes -l "*master*" -i inventory/production.yml --list-hosts
 
 # ONLY Kubernetes workers  
-ansible product_kubernetes -l "*worker*" -i inventory/production_simple.yml --list-hosts
+ansible product_kubernetes -l "*worker*" -i inventory/production.yml --list-hosts
 ```
 
 ### **Environment Filtering**
 ```bash
-# Production identity management only
-ansible app_identity_management -i inventory/production_simple.yml --list-hosts
+# Production directory services only
+ansible app_identity_management -i inventory/production.yml --list-hosts
 
 # Development web servers only
-ansible app_web_server -i inventory/development_simple.yml --list-hosts
+ansible app_web_server -i inventory/development.yml --list-hosts
 
 # All environments for specific product
-ansible product_postgresql -i inventory/production_simple.yml,inventory/development_simple.yml --list-hosts
+ansible product_postgresql -i inventory/production.yml,inventory/development.yml --list-hosts
 ```
 
 ## 📊 **Group Structure Reference**
+
+> **Note:** The following application service groups and product-specific groups are examples. Adapt these to match your own environment, products, and services as needed.
 
 ### **Application Service Groups**
 ```yaml
@@ -110,9 +112,9 @@ app_legacy_app              # Legacy applications
 ### **Product-Specific Groups**
 ```yaml
 # Software-specific product groups
-product_netiq_idm           # NetIQ Identity Manager
-product_opentext_edirectory # OpenText eDirectory  
-product_red_hat_directory_server # Red Hat Directory Server
+product_directory_service_a           # Directory Service A
+product_directory_service_b           # Directory Service B  
+product_directory_service_c           # Directory Service C
 product_apache_httpd        # Apache HTTP Server
 product_nginx               # Nginx web server
 product_postgresql          # PostgreSQL database
@@ -161,8 +163,8 @@ ansible product_kubernetes -l "*worker*" -m shell -a "kubectl scale deployment a
 # Deploy new Apache config to Apache servers only (not Nginx)
 ansible product_apache_httpd -m copy -a "src=httpd.conf dest=/etc/httpd/conf/"
 
-# Update NetIQ IDM drivers specifically
-ansible product_netiq_idm -m copy -a "src=idm-drivers.xml dest=/opt/netiq/idm/"
+# Update directory service drivers specifically
+ansible product_directory_service_a -m copy -a "src=directory-drivers.xml dest=/opt/directory_service_a/"
 
 # Deploy database schema to PostgreSQL only (not MongoDB)
 ansible product_postgresql -m postgresql_db -a "name=myapp state=present"
@@ -174,10 +176,10 @@ ansible product_postgresql -m postgresql_db -a "name=myapp state=present"
 ansible app_database -m shell -a "{{backup_command}}"
 
 # Check disk space on ALL servers by environment
-ansible all -i inventory/production_simple.yml -m shell -a "df -h"
+ansible all -i inventory/production.yml -m shell -a "df -h"
 
 # Update ALL system packages in development
-ansible all -i inventory/development_simple.yml -m yum -a "name=* state=latest"
+ansible all -i inventory/development.yml -m yum -a "name=* state=latest"
 ```
 
 ## 📁 **File Locations**
@@ -190,10 +192,10 @@ inventory_source/hosts_demo.csv    # Demo CSV showing complete functionality
 
 ### **Generated Inventories**
 ```
-inventory/production_simple.yml        # 142 hosts, 61 groups
-inventory/development_simple.yml       # 43 hosts, 51 groups  
-inventory/test_simple.yml              # 30 hosts, 47 groups
-inventory/acceptance_simple.yml        # 30 hosts, 47 groups
+inventory/production.yml        # 142 hosts, 61 groups
+inventory/development.yml       # 43 hosts, 51 groups  
+inventory/test.yml              # 30 hosts, 47 groups
+inventory/acceptance.yml        # 30 hosts, 47 groups
 ```
 
 ### **Configuration Files**
@@ -209,13 +211,13 @@ inventory/host_vars/                   # Auto-generated host data
 ### **Check Host Variables**
 ```bash
 # Show all variables for specific host
-ansible-inventory -i inventory/production_simple.yml --host prd-idm-use1-01 --yaml
+ansible-inventory -i inventory/production.yml --host prd-dirsvc1-use1-01 --yaml
 
 # List all hosts in a group
-ansible app_identity_management -i inventory/production_simple.yml --list-hosts
+ansible app_identity_management -i inventory/production.yml --list-hosts
 
 # Show group membership for host
-ansible-inventory -i inventory/production_simple.yml --graph
+ansible-inventory -i inventory/production.yml --graph
 ```
 
 ### **Validation Commands**
@@ -233,13 +235,13 @@ python3 scripts/show_inventory_structure.py
 ### **Troubleshooting**
 ```bash
 # Check Ansible can connect to hosts
-ansible app_web_server -i inventory/production_simple.yml -m ping
+ansible app_web_server -i inventory/production.yml -m ping
 
 # Test specific host connectivity
-ansible prd-idm-use1-01 -i inventory/production_simple.yml -m setup
+ansible prd-dirsvc1-use1-01 -i inventory/production.yml -m setup
 
 # Verify group targeting
-ansible app_identity_management -i inventory/production_simple.yml --list-hosts
+ansible app_identity_management -i inventory/production.yml --list-hosts
 ```
 
 ## ⚡ **Pro Tips**
@@ -247,25 +249,25 @@ ansible app_identity_management -i inventory/production_simple.yml --list-hosts
 ### **Combining Groups**
 ```bash
 # Multiple functional groups
-ansible app_web_server,app_database -i inventory/production_simple.yml --list-hosts
+ansible app_web_server,app_database -i inventory/production.yml --list-hosts
 
 # Product-specific with environment filtering  
-ansible product_kubernetes -i inventory/production_simple.yml -l "*master*" --list-hosts
+ansible product_kubernetes -i inventory/production.yml -l "*master*" --list-hosts
 
 # Exclude specific hosts
-ansible app_monitoring_metrics -i inventory/production_simple.yml --limit '!prd-prometheus-use1-02' --list-hosts
+ansible app_monitoring_metrics -i inventory/production.yml --limit '!prd-prometheus-use1-02' --list-hosts
 ```
 
 ### **Advanced Patterns**
 ```bash
 # All identity services in US regions only
-ansible app_identity_management -i inventory/production_simple.yml -l "*use1*" --list-hosts
+ansible app_identity_management -i inventory/production.yml -l "*use1*" --list-hosts
 
 # All databases except MongoDB
-ansible app_database -i inventory/production_simple.yml --limit '!product_mongodb' --list-hosts
+ansible app_database -i inventory/production.yml --limit '!product_mongodb' --list-hosts
 
 # Staging environments (test + acceptance)
-ansible all -i inventory/test_simple.yml,inventory/acceptance_simple.yml --list-hosts
+ansible all -i inventory/test.yml,inventory/acceptance.yml --list-hosts
 ```
 
 ---

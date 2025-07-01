@@ -9,10 +9,10 @@ description = "Enterprise-grade Ansible inventory management with unified CLI, a
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Infrastructure as Code Team", email = "devops@company.com"}
+    {name = "J Goossens", email = "jgoos@users.noreply.github.com"}
 ]
 maintainers = [
-    {name = "Infrastructure as Code Team", email = "devops@company.com"}
+    {name = "J Goossens", email = "jgoos@users.noreply.github.com"}
 ]
 keywords = ["ansible", "inventory", "devops", "infrastructure", "automation", "cli"]
 classifiers = [

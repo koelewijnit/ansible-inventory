@@ -5,7 +5,7 @@ Ansible Inventory Management CLI
 A comprehensive tool for managing Ansible inventories using CSV data sources
 with a clean modular command architecture.
 
-Author: Senior DevOps Engineer
+Author: J Goossens <jgoos@users.noreply.github.com>
 Version: 2.0.0
 """
 

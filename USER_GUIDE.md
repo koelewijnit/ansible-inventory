@@ -344,11 +344,11 @@ ansible-inventory -i inventory/production.yml --list
 ```bash
 # 1. Mark host as decommissioned (dry run first)
 python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2024-12-31 --dry-run
+  --hostname old-server-01 --date 2025-12-31 --dry-run
 
 # 2. Confirm and execute decommission
 python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2024-12-31 --reason "Hardware EOL"
+  --hostname old-server-01 --date 2025-12-31 --reason "Hardware EOL"
 
 # 3. Regenerate inventories
 python scripts/ansible_inventory_cli.py generate
@@ -519,9 +519,9 @@ ERROR: CSV file not found: inventory_source/hosts.csv
 
 #### **Invalid Date Format**
 ```bash
-ERROR: Invalid date format: 12/31/2024. Use YYYY-MM-DD
+ERROR: Invalid date format: 12/31/2025. Use YYYY-MM-DD
 ```
-**Solution**: Use ISO date format: `2024-12-31`
+**Solution**: Use ISO date format: `2025-12-31`
 
 ### **Exit Codes**
 

@@ -88,7 +88,7 @@ python scripts/ansible_inventory_cli.py --log-level DEBUG validate
 ```bash
 # Decommission a host
 python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname server-01 --date 2024-12-31
+  --hostname server-01 --date 2025-12-31
 
 # List expired hosts
 python scripts/ansible_inventory_cli.py lifecycle list-expired
@@ -173,7 +173,7 @@ python scripts/ansible_inventory_cli.py validate
 ```bash
 # 1. Mark host as decommissioned
 python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2024-12-31
+  --hostname old-server-01 --date 2025-12-31
 
 # 2. Regenerate inventories
 python scripts/ansible_inventory_cli.py generate
