@@ -624,23 +624,23 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
 
     result = ValidationResult()
 
-    # Expected headers based on Host model
+    # Expected headers based on Host model (in logical order)
     expected_headers = [
         "hostname",
-        "environment",
+        "environment", 
         "status",
+        "cname",
+        "instance",
+        "location",
+        "ssl_port",
         "application_service",
         "product_id",
-        "location",
-        "instance",
+        "primary_application",
+        "function",
         "batch_number",
         "patch_mode",
         "dashboard_group",
-        "primary_application",
-        "function",
-        "ssl_port",
         "decommission_date",
-        "cname",
     ]
 
     # Validate headers first
@@ -700,26 +700,34 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
 def get_csv_template() -> str:
     """
     Get a CSV template with all required headers and example data.
+    
+    Headers are organized logically:
+    - Required fields first (hostname, environment, status)
+    - Identity fields (cname, instance)
+    - Infrastructure fields (location, ssl_port)
+    - Application fields (application_service, product_id, primary_application, function)
+    - Operational fields (batch_number, patch_mode, dashboard_group)
+    - Lifecycle fields (decommission_date)
 
     Returns:
         String containing CSV template
     """
     return (
-        "hostname,cname,environment,group_path,application_service,product_id,"
-        "batch_number,patch_mode,dashboard_group,primary_application,function,"
-        "location,instance,ssl_port,status,decommission_date\n"
+        "hostname,environment,status,cname,instance,location,ssl_port,"
+        "application_service,product_id,primary_application,function,"
+        "batch_number,patch_mode,dashboard_group,decommission_date\n"
         "# Example hosts (remove # to activate):\n"
-        "# prd-web-use1-01,,production,,web,webapp,1,auto,Web,WebApp,frontend,"
-        "us-east-1,1,443,active,\n"
-        "# dev-db-use1-01,,development,,db,postgres,2,manual,DB,Database,backend,"
-        "us-east-1,2,5432,active,\n"
-        "# tst-app-use1-01,,test,,app,appsvc,3,auto,API,AppService,api,"
-        "us-east-1,3,8080,active,\n"
-        "# acc-mon-use1-01,,acceptance,,monitoring,mon,4,manual,Monitoring,"
-        "Monitoring,infra,us-east-1,4,9090,active,\n\n"
+        "# prd-web-use1-01,production,active,,1,us-east-1,443,"
+        "web,webapp,WebApp,frontend,1,auto,Web,\n"
+        "# dev-db-use1-01,development,active,,2,us-east-1,5432,"
+        "db,postgres,Database,backend,2,manual,DB,\n"
+        "# tst-app-use1-01,test,active,,3,us-east-1,8080,"
+        "app,appsvc,AppService,api,3,auto,API,\n"
+        "# acc-mon-use1-01,acceptance,active,,4,us-east-1,9090,"
+        "monitoring,mon,Monitoring,infra,4,manual,Monitoring,\n\n"
         "# Required fields: hostname, environment, status\n"
         "# Optional fields: all others\n"
-        "# Data types: instance and batch_number must be integers\n"
+        "# Data types: instance, batch_number, and ssl_port must be integers\n"
         "# Status values: active, decommissioned\n"
         "# Environment values: production, development, test, acceptance\n"
         "# Patch modes: auto, manual\n"
