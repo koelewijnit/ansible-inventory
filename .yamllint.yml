@@ -1,0 +1,98 @@
+# yamllint configuration
+extends: default
+
+rules:
+  # Line length - accommodate longer lines in Ansible
+  line-length:
+    max: 120
+    level: warning
+
+  # Comments - allow comments without space
+  comments:
+    min-spaces-from-content: 1
+    min-spaces-after-comment: 1
+
+  # Indentation - 2 spaces for YAML
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Document delimiters
+  document-start:
+    present: false  # Don't require --- at start
+  document-end:
+    present: false  # Don't require ... at end
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+  # Key duplicates
+  key-duplicates: enable
+
+  # Brackets (lists)
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+    min-spaces-after-opening: -1
+    max-spaces-after-opening: -1
+    min-spaces-before-closing: -1
+    max-spaces-before-closing: -1
+
+  # Braces (dictionaries)
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+    min-spaces-after-opening: -1
+    max-spaces-after-opening: -1
+    min-spaces-before-closing: -1
+    max-spaces-before-closing: -1
+
+  # Colons
+  colons:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # Commas
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # Truthy values
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: true
+
+  # Float values
+  float-values:
+    require-numeral-before-decimal: false
+    forbid-scientific-notation: false
+    forbid-nan: false
+    forbid-inf: false
+
+  # Key ordering
+  key-ordering: disable  # Ansible playbooks don't need strict ordering
+
+  # Quoted strings
+  quoted-strings:
+    quote-type: any
+    required: false
+
+# Ignore patterns
+ignore: |
+  logs/
+  backups/
+  archive/
+  .tox/
+  .venv/
+  venv/
+  __pycache__/
+  *.pyc 

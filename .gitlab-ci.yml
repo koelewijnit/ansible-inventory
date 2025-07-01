@@ -1,0 +1,593 @@
+# GitLab CI/CD Pipeline for Ansible Inventory Management
+# =======================================================
+# Enterprise-grade pipeline with multi-stage validation, security scanning,
+# and automated deployment workflows.
+
+# Global Configuration
+# ====================
+
+image: python:3.10-slim
+
+# Pipeline stages executed in order (with parallel jobs within stages)
+stages:
+  - validate
+  - test
+  - security
+  - quality
+  - build
+  - deploy
+  - verify
+
+# Global variables available to all jobs
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHON_DEFAULT_VERSION: "3.10"
+  COVERAGE_THRESHOLD: "80"
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+  ANSIBLE_STDOUT_CALLBACK: "yaml"
+
+# Cache configuration for faster builds
+cache:
+  key: "${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME}"
+  paths:
+    - .cache/pip
+    - .venv/
+  policy: pull-push
+
+# Common script snippets using YAML anchors
+.install_dependencies: &install_dependencies
+  - apt-get update -qq && apt-get install -y -qq git openssh-client
+  - python -m pip install --upgrade pip
+  - pip install -e ".[dev,test]"
+
+.setup_ssh: &setup_ssh
+  - eval $(ssh-agent -s)
+  - echo "$DEPLOY_SSH_KEY" | tr -d '\r' | ssh-add -
+  - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  - ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts
+
+# GitLab Security Templates
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/License-Scanning.gitlab-ci.yml
+
+# VALIDATION STAGE
+# ================
+
+# Pre-commit hooks validation
+validate:pre-commit:
+  stage: validate
+  before_script:
+    - *install_dependencies
+    - pre-commit install
+  script:
+    - pre-commit run --all-files --show-diff-on-failure
+  allow_failure: false
+  artifacts:
+    when: on_failure
+    paths:
+      - pre-commit.log
+    expire_in: 1 day
+
+# Code formatting validation
+validate:formatting:
+  stage: validate
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🔍 Checking code formatting..."
+    - black --check --diff scripts/
+    - isort --check-only --diff scripts/
+  allow_failure: false
+
+# Python linting
+validate:python-lint:
+  stage: validate
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🔍 Running Python linting..."
+    - flake8 scripts/ --output-file=flake8-report.txt --tee
+    - mypy scripts/ --xml-report=mypy-report || true
+  artifacts:
+    when: always
+    paths:
+      - flake8-report.txt
+      - mypy-report/
+    expire_in: 1 week
+    reports:
+      junit: mypy-report/index.xml
+
+# YAML and Ansible validation
+validate:ansible:
+  stage: validate
+  image: quay.io/ansible/ansible-runner:latest
+  before_script:
+    - pip install ansible-lint yamllint
+  script:
+    - echo "🔍 Validating YAML and Ansible files..."
+    - yamllint -c .yamllint.yml inventory/ ansible.cfg
+    - ansible-lint inventory/ || true
+    - ansible-config dump --only-changed
+    - ansible-inventory --inventory inventory/production.yml --list > /dev/null
+    - ansible-inventory --inventory inventory/development.yml --list > /dev/null
+    - ansible-inventory --inventory inventory/test.yml --list > /dev/null
+    - ansible-inventory --inventory inventory/acceptance.yml --list > /dev/null
+  artifacts:
+    when: on_failure
+    paths:
+      - ansible-lint.log
+    expire_in: 1 day
+
+# Check if inventory is up-to-date
+validate:inventory-sync:
+  stage: validate
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🔍 Checking if generated inventory is in sync..."
+    - python scripts/ansible_inventory_cli.py generate
+    - |
+      if [[ -n $(git status -s inventory/) ]]; then
+        echo "❌ Generated inventory is not in sync with the CSV file."
+        echo "Please run 'python scripts/ansible_inventory_cli.py generate' and commit the changes."
+        git diff inventory/
+        exit 1
+      else
+        echo "✅ Generated inventory is in sync."
+      fi
+
+# TEST STAGE
+# ==========
+
+# Unit tests with coverage (multi-Python matrix)
+.test_template: &test_template
+  stage: test
+  before_script:
+    - *install_dependencies
+    - pip install ansible>=4.0.0
+  script:
+    - echo "🧪 Running tests on Python ${PYTHON_VERSION}..."
+    - pytest tests/ -v --cov=scripts --cov-report=xml --cov-report=html --cov-report=term-missing
+    - coverage report --fail-under=${COVERAGE_THRESHOLD}
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    when: always
+    paths:
+      - htmlcov/
+      - coverage.xml
+      - .coverage
+    reports:
+      coverage: coverage.xml
+      junit: test-results.xml
+    expire_in: 1 week
+
+# Matrix testing across Python versions
+test:python-matrix:
+  <<: *test_template
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+  image: python:${PYTHON_VERSION}-slim
+
+# Integration tests with real Ansible
+test:integration:
+  stage: test
+  image: quay.io/ansible/ansible-runner:latest
+  before_script:
+    - pip install -e ".[test]"
+  script:
+    - echo "🔧 Running integration tests..."
+    - python scripts/ansible_inventory_cli.py health --output-format json > health-report.json
+    - python scripts/ansible_inventory_cli.py validate
+    - python scripts/ansible_inventory_cli.py generate --environments test
+    - ansible-inventory --inventory inventory/test.yml --list > /dev/null
+  artifacts:
+    paths:
+      - health-report.json
+      - inventory/test.yml
+    expire_in: 1 day
+
+# Performance benchmarks
+test:performance:
+  stage: test
+  before_script:
+    - *install_dependencies
+    - pip install pytest-benchmark
+  script:
+    - echo "⚡ Running performance benchmarks..."
+    - time python scripts/ansible_inventory_cli.py health
+    - python -c "
+      import time
+      import scripts.ansible_inventory_cli as cli
+      start = time.time()
+      manager = cli.UnifiedInventoryManager()
+      hosts = manager.load_hosts()
+      duration = time.time() - start
+      print(f'Load time: {duration:.2f}s for {len(hosts)} hosts')
+      assert duration < 5.0, f'Load time too slow: {duration}s'
+      "
+  artifacts:
+    when: always
+    paths:
+      - benchmark-results.json
+    expire_in: 1 week
+
+# SECURITY STAGE
+# ==============
+
+# Static security analysis
+security:bandit:
+  stage: security
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🔒 Running security analysis..."
+    - bandit -r scripts/ -f json -o bandit-report.json
+    - bandit -r scripts/ -f txt
+  artifacts:
+    when: always
+    paths:
+      - bandit-report.json
+    reports:
+      sast: bandit-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# Dependency vulnerability scanning
+security:safety:
+  stage: security
+  before_script:
+    - pip install safety
+  script:
+    - echo "🔒 Scanning dependencies for vulnerabilities..."
+    - safety check --json --output safety-report.json || true
+    - safety check || true
+  artifacts:
+    when: always
+    paths:
+      - safety-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# Container security scanning (if using Docker images)
+security:container:
+  stage: security
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  before_script:
+    - docker info
+  script:
+    - echo "🔒 Container security scanning..."
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock 
+      -v $PWD:/tmp aquasec/trivy image --exit-code 0 --no-progress 
+      --format json -o container-security-report.json $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  artifacts:
+    paths:
+      - container-security-report.json
+    expire_in: 1 week
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# QUALITY STAGE
+# =============
+
+# Code quality analysis
+quality:code-climate:
+  stage: quality
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  script:
+    - echo "📊 Running code quality analysis..."
+    - docker run --env SOURCE_CODE="$PWD" 
+                 --volume "$PWD":/code 
+                 --volume /var/run/docker.sock:/var/run/docker.sock 
+                 "registry.gitlab.com/gitlab-org/ci-cd/codequality:latest" /code
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    expire_in: 1 week
+  allow_failure: true
+
+# Documentation validation
+quality:docs:
+  stage: quality
+  before_script:
+    - pip install -e ".[docs]"
+  script:
+    - echo "📚 Validating documentation..."
+    - python -c "
+      import os
+      assert os.path.exists('README.md'), 'README.md not found'
+      assert os.path.exists('USER_GUIDE.md'), 'USER_GUIDE.md not found'
+      assert os.path.exists('MIGRATION.md'), 'MIGRATION.md not found'
+      assert os.path.exists('docs/'), 'docs/ directory not found'
+      print('✅ All documentation files found')
+      "
+    - echo "📝 Checking for broken links..."
+    - find . -name "*.md" -exec grep -l "http" {} \; | head -10
+  allow_failure: true
+
+# Ansible best practices check
+quality:ansible-best-practices:
+  stage: quality
+  image: quay.io/ansible/ansible-runner:latest
+  before_script:
+    - pip install ansible-lint
+  script:
+    - echo "📋 Checking Ansible best practices..."
+    - ansible-lint inventory/ --parseable --quiet > ansible-quality-report.txt || true
+    - cat ansible-quality-report.txt
+  artifacts:
+    when: always
+    paths:
+      - ansible-quality-report.txt
+    expire_in: 1 week
+  allow_failure: true
+
+# BUILD STAGE
+# ===========
+
+# Build Python packages
+build:package:
+  stage: build
+  before_script:
+    - pip install build twine
+  script:
+    - echo "📦 Building Python packages..."
+    - python -m build
+    - twine check dist/*
+    - ls -la dist/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 month
+  only:
+    - main
+    - develop
+    - tags
+
+# Build Docker image (optional)
+build:docker:
+  stage: build
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo "🐋 Building Docker image..."
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+    - main
+    - develop
+
+# DEPLOY STAGE
+# ============
+
+# Deploy to development environment (automatic)
+deploy:development:
+  stage: deploy
+  environment:
+    name: development
+    url: https://dev.inventory.company.com
+  before_script:
+    - *install_dependencies
+    - *setup_ssh
+  script:
+    - echo "🚀 Deploying to development environment..."
+    - scp -r inventory/ $DEPLOY_USER@$DEPLOY_HOST:/opt/ansible-inventory/dev/
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /opt/ansible-inventory/dev && python scripts/ansible_inventory_cli.py health"
+  variables:
+    DEPLOY_HOST: "dev.inventory.company.com"
+    DEPLOY_USER: "ansible-deploy"
+  only:
+    - develop
+  when: on_success
+
+# Deploy to staging environment (manual approval)
+deploy:staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.inventory.company.com
+  before_script:
+    - *install_dependencies
+    - *setup_ssh
+  script:
+    - echo "🎯 Deploying to staging environment..."
+    - scp -r inventory/ $DEPLOY_USER@$DEPLOY_HOST:/opt/ansible-inventory/staging/
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /opt/ansible-inventory/staging && python scripts/ansible_inventory_cli.py validate"
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /opt/ansible-inventory/staging && python scripts/ansible_inventory_cli.py health"
+  variables:
+    DEPLOY_HOST: "staging.inventory.company.com"
+    DEPLOY_USER: "ansible-deploy"
+  when: manual
+  only:
+    - main
+
+# Deploy to production environment (manual approval + additional checks)
+deploy:production:
+  stage: deploy
+  environment:
+    name: production
+    url: https://inventory.company.com
+  before_script:
+    - *install_dependencies
+    - *setup_ssh
+    - echo "🏢 Production deployment requires additional validation..."
+  script:
+    - echo "✅ Running pre-deployment checks..."
+    - python scripts/ansible_inventory_cli.py validate
+    - python scripts/ansible_inventory_cli.py health --output-format json
+    - echo "🚀 Deploying to production environment..."
+    - scp -r inventory/ $DEPLOY_USER@$DEPLOY_HOST:/opt/ansible-inventory/production/
+    - ssh $DEPLOY_USER@$DEPLOY_HOST "cd /opt/ansible-inventory/production && python scripts/ansible_inventory_cli.py health"
+    - echo "✅ Production deployment completed successfully!"
+  variables:
+    DEPLOY_HOST: "inventory.company.com"
+    DEPLOY_USER: "ansible-deploy"
+  when: manual
+  allow_failure: false
+  only:
+    - main
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'  # Only on version tags
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+
+# Review app deployment for merge requests
+deploy:review:
+  stage: deploy
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$CI_COMMIT_REF_SLUG.review.inventory.company.com
+    on_stop: stop:review
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "📝 Deploying review environment for MR..."
+    - mkdir -p /tmp/review-$CI_COMMIT_REF_SLUG
+    - cp -r . /tmp/review-$CI_COMMIT_REF_SLUG/
+    - cd /tmp/review-$CI_COMMIT_REF_SLUG
+    - python scripts/ansible_inventory_cli.py health
+  only:
+    - merge_requests
+  when: manual
+
+# Stop review environment
+stop:review:
+  stage: deploy
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+  script:
+    - echo "🗑️ Cleaning up review environment..."
+    - rm -rf /tmp/review-$CI_COMMIT_REF_SLUG || true
+  when: manual
+  only:
+    - merge_requests
+
+# VERIFY STAGE
+# ============
+
+# Post-deployment health checks
+verify:health-check:
+  stage: verify
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🏥 Running post-deployment health checks..."
+    - python scripts/ansible_inventory_cli.py health --output-format json > post-deploy-health.json
+    - python -c "
+      import json
+      with open('post-deploy-health.json') as f:
+          health = json.load(f)
+      score = health.get('health_score', 0)
+      print(f'Health Score: {score}%')
+      assert score >= ${COVERAGE_THRESHOLD}, f'Health score too low: {score}%'
+      print('✅ Health check passed!')
+      "
+  artifacts:
+    when: always
+    paths:
+      - post-deploy-health.json
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+
+# Performance regression testing
+verify:performance:
+  stage: verify
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "⚡ Running performance regression tests..."
+    - time python scripts/ansible_inventory_cli.py health > performance-test.log 2>&1
+    - echo "📊 Performance test completed"
+  artifacts:
+    when: always
+    paths:
+      - performance-test.log
+    expire_in: 1 week
+  allow_failure: true
+  only:
+    - main
+
+# SCHEDULED JOBS
+# ==============
+
+# Weekly security audit (scheduled pipeline)
+security:weekly-audit:
+  stage: security
+  before_script:
+    - *install_dependencies
+  script:
+    - echo "🔒 Running weekly security audit..."
+    - safety check --json --output weekly-security-audit.json
+    - bandit -r scripts/ -f json -o weekly-bandit-audit.json
+  artifacts:
+    when: always
+    paths:
+      - weekly-security-audit.json
+      - weekly-bandit-audit.json
+    expire_in: 1 month
+  only:
+    - schedules
+  variables:
+    AUDIT_TYPE: "weekly"
+
+# Cleanup old review environments (scheduled)
+cleanup:review-environments:
+  stage: deploy
+  script:
+    - echo "🧹 Cleaning up old review environments..."
+    - find /tmp -name "review-*" -type d -mtime +7 -exec rm -rf {} \; || true
+    - echo "✅ Cleanup completed"
+  only:
+    - schedules
+  variables:
+    CLEANUP_TYPE: "review_environments"
+
+# FAILURE NOTIFICATIONS
+# ====================
+
+# Notify on pipeline failure
+notify:failure:
+  stage: verify
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "🚨 Pipeline failed - sending notification..."
+    - curl -X POST "$SLACK_WEBHOOK_URL" 
+           -H 'Content-type: application/json' 
+           --data "{\"text\":\"🚨 Pipeline failed in ${CI_PROJECT_NAME} on branch ${CI_COMMIT_REF_NAME}\"}" || true
+  when: on_failure
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# RULES AND CONDITIONS
+# ====================
+
+# Global rules (can be overridden by job-specific rules)
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "schedule" 

@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""
+Ansible Inventory Management CLI
+
+A comprehensive tool for managing Ansible inventories using CSV data sources
+with a clean modular command architecture.
+
+Author: Senior DevOps Engineer
+Version: 2.0.0
+"""
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+from commands import CommandRegistry
+from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging
+
+# Add current directory to path for imports
+SCRIPT_DIR = Path(__file__).parent.absolute()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+
+class ModularInventoryCLI:
+    """Ansible Inventory Management CLI."""
+
+    def __init__(self):
+        self.logger = get_logger(__name__)
+        self.command_registry = CommandRegistry()
+        self.start_time = time.time()
+
+    def create_parser(self) -> argparse.ArgumentParser:
+        """Create the main argument parser with all subcommands."""
+        parser = argparse.ArgumentParser(
+            description="Ansible Inventory Management Tool",
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""
+Examples:
+  # Generate inventory files
+  %(prog)s generate --dry-run
+  %(prog)s generate --environments production development
+
+  # Health monitoring
+  %(prog)s health --threshold 80
+
+  # Validation
+  %(prog)s validate --comprehensive
+
+  # Host lifecycle management
+  %(prog)s lifecycle decommission --hostname prd-web-use1-01 --date 2025-01-15
+  %(prog)s lifecycle cleanup --dry-run
+
+  # Import existing inventories
+  %(prog)s import --inventory-file legacy_inventory.yml --dry-run
+
+  # Geographic utilities
+  %(prog)s geographic list
+  %(prog)s geographic lookup shanwei
+
+For more information, see the documentation at:
+https://github.com/your-org/inventory-structure
+            """,
+        )
+
+        # Global arguments
+        parser.add_argument(
+            "--version", action="version", version=f"%(prog)s {VERSION}"
+        )
+        parser.add_argument(
+            "--csv-file",
+            type=Path,
+            default=CSV_FILE,
+            help=f"CSV source file (default: {CSV_FILE})",
+        )
+        parser.add_argument(
+            "--log-level",
+            choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+            default=LOG_LEVEL,
+            help=f"Logging level (default: {LOG_LEVEL})",
+        )
+        parser.add_argument(
+            "--json", action="store_true", help="Output results in JSON format"
+        )
+        parser.add_argument(
+            "--quiet", "-q", action="store_true", help="Suppress non-error output"
+        )
+        parser.add_argument(
+            "--timing", action="store_true", help="Show execution timing information"
+        )
+
+        # Create subparsers for commands
+        subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+        # Add all registered commands
+        for command_name in self.command_registry.get_available_commands():
+            command_class = self.command_registry.get_command_class(command_name)
+
+            # Create subparser for this command
+            if command_name == "geographic":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Geographic location management"
+                )
+            elif command_name == "lifecycle":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Host lifecycle management"
+                )
+            elif command_name == "import":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Import existing Ansible inventories"
+                )
+            elif command_name == "generate":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Generate inventory files from CSV"
+                )
+            elif command_name == "health":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Monitor inventory health and consistency"
+                )
+            elif command_name == "validate":
+                command_parser = subparsers.add_parser(
+                    command_name, help="Validate inventory structure and data"
+                )
+            else:
+                command_parser = subparsers.add_parser(command_name)
+
+            # Let the command class add its arguments
+            temp_command = command_class()
+            temp_command.add_parser_arguments(command_parser)
+
+        return parser
+
+    def execute_command(self, args) -> dict:
+        """Execute the specified command with arguments."""
+        if not args.command:
+            return {
+                "success": False,
+                "error": "No command specified. Use --help to see available commands.",
+            }
+
+        try:
+            # Create command instance
+            command = self.command_registry.create_command(
+                args.command, args.csv_file, self.logger
+            )
+
+            # Execute the command
+            result = command.execute(args)
+
+            # Add timing information if requested
+            if args.timing:
+                execution_time = time.time() - self.start_time
+                result["execution_time"] = round(execution_time, 3)
+
+            return result
+
+        except ValueError:
+            return {"success": False, "error": f"Unknown command: {args.command}"}
+        except FileNotFoundError as e:
+            self.logger.error(f"File not found: {e}")
+            return {"success": False, "error": f"File not found: {e}"}
+        except Exception as e:
+            self.logger.error(f"Command execution failed: {e}", exc_info=True)
+            return {"success": False, "error": f"An unexpected error occurred: {e}"}
+
+    def format_output(self, result: dict, args) -> str:
+        """Format command result for output."""
+        if args.json:
+            return json.dumps(result, indent=2, default=str)
+
+        # Try to use command-specific formatting if available
+        command_name = getattr(args, "command", None)
+        if command_name:
+            try:
+                command = self.command_registry.create_command(command_name)
+                if hasattr(command, "format_text_output"):
+                    return command.format_text_output(result)
+            except Exception:
+                pass  # Fall back to generic formatting
+
+        # Generic text formatting
+        if result.get("success", False):
+            lines = []
+            if result.get("message"):
+                lines.append(f"✅ {result['message']}")
+
+            # Show timing if available
+            if "execution_time" in result:
+                lines.append(f"⏱️  Execution time: {result['execution_time']}s")
+
+            return "\n".join(lines) if lines else "✅ Command completed successfully"
+        else:
+            error = result.get("error", "Unknown error")
+            return f"❌ {error}"
+
+    def run(self, argv=None):
+        """Main entry point for the CLI."""
+        parser = self.create_parser()
+        args = parser.parse_args(argv)
+
+        # Setup logging
+        setup_logging(args.log_level)
+
+        # Log startup information
+        if not args.quiet:
+            self.logger.info(f"Ansible Inventory Management CLI v{VERSION}")
+            self.logger.info(f"CSV Source: {args.csv_file}")
+
+        # Execute command
+        result = self.execute_command(args)
+
+        # Format and output result
+        if not args.quiet or not result.get("success", False):
+            output = self.format_output(result, args)
+            print(output)
+
+        # Exit with appropriate code
+        sys.exit(0 if result.get("success", False) else 1)
+
+
+def main():
+    """Main entry point."""
+    try:
+        cli = ModularInventoryCLI()
+        cli.run()
+    except FileNotFoundError as e:
+        logger = get_logger(__name__)
+        logger.error(f"File not found: {e}")
+        print(f"❌ File not found: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n⚠️  Operation cancelled by user")
+        sys.exit(130)
+    except Exception as e:
+        logger = get_logger(__name__)
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        print(f"❌ Unexpected error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
