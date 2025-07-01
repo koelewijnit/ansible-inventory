@@ -57,9 +57,7 @@ Examples:
   # Import existing inventories
   %(prog)s import --inventory-file legacy_inventory.yml --dry-run
 
-  # Geographic utilities
-  %(prog)s geographic list
-  %(prog)s geographic lookup shanwei
+  
 
 For more information, see the documentation at:
 https://github.com/your-org/inventory-structure
@@ -100,11 +98,7 @@ https://github.com/your-org/inventory-structure
             command_class = self.command_registry.get_command_class(command_name)
 
             # Create subparser for this command
-            if command_name == "geographic":
-                command_parser = subparsers.add_parser(
-                    command_name, help="Geographic location management"
-                )
-            elif command_name == "lifecycle":
+            if command_name == "lifecycle":
                 command_parser = subparsers.add_parser(
                     command_name, help="Host lifecycle management"
                 )

@@ -132,8 +132,9 @@ Your `inventory_source/hosts.csv` should include these columns:
 | `location` | Geographic location | `us-east-1`, `europe` |
 | `batch_number` | Patch batch | `batch_1`, `batch_2` |
 | `patch_mode` | Patching mode | `manual`, `auto` |
+| `ansible_tags` | Comma-separated list of custom Ansible tags | `web, database, critical` |
 
-Additional fields for CMDB integration: `primary_application`, `function`, `dashboard_group`, `ssl_port`, `cname`, `decommission_date`
+Additional fields for CMDB integration: `primary_application`, `function`, `dashboard_group`, `ssl_port`, `cname`, `decommission_date`, `notes`
 
 ## 🎯 **Group Targeting**
 

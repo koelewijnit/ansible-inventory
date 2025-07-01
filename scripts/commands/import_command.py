@@ -393,30 +393,7 @@ class ImportCommand(BaseCommand):
 
         hostname_lower = hostname.lower()
 
-        # Common region patterns
-        region_patterns = [
-            (r"us-?east-?(\d+)?|use(\d+)?", "use1"),
-            (r"us-?west-?(\d+)?|usw(\d+)?", "usw1"),
-            (r"eu-?west-?(\d+)?|euw(\d+)?", "euw1"),
-            (r"ap-?southeast-?(\d+)?|apse(\d+)?", "apse1"),
-            (r"norwalk|nrw", "norwalk"),
-            (r"las.?vegas|lvg", "lasvegas"),
-            (r"taipei|tpe", "taipei"),
-            (r"shanwei|shh", "shanwei"),
-            (r"eindhoven.*eid|eid", "eindhoven-eid"),
-            (r"eindhoven.*htc|htc", "eindhoven-htc"),
-        ]
-
-        # Check hostname patterns
-        for pattern, location_code in region_patterns:
-            if re.search(pattern, hostname_lower):
-                return location_code
-
-        # Check group patterns
-        for pattern, location_code in region_patterns:
-            for group in groups:
-                if re.search(pattern, group.lower()):
-                    return location_code
+        
 
         return ""
 

@@ -192,6 +192,8 @@ python scripts/ansible_inventory_cli.py validate --help
 | `patch_mode` | ❌ | `auto` | Patching mode |
 | `dashboard_group` | ❌ | `Web` | Monitoring group |
 | `decommission_date` | ❌ | `2024-12-31` | Decommission date |
+| `notes` | ❌ | `Migrated from old cluster` | General notes or comments |
+| `ansible_tags` | ❌ | `web, database, critical` | Comma-separated list of custom Ansible tags |
 
 ---
 

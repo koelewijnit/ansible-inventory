@@ -31,6 +31,7 @@ class Host:
     ssl_port: Optional[str] = None
     decommission_date: Optional[str] = None
     cname: Optional[str] = None
+    ansible_tags: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -124,10 +125,18 @@ class Host:
             "function",
             "decommission_date",
             "cname",
+            "ansible_tags",
         ]:
             value = getattr(self, field_name)
             if value:
                 setattr(self, field_name, value.strip())
+
+    @property
+    def ansible_tags_list(self) -> List[str]:
+        """Get a list of Ansible tags for this host."""
+        if not self.ansible_tags:
+            return []
+        return [tag.strip() for tag in self.ansible_tags.split(',') if tag.strip()]
 
     @property
     def is_decommissioned(self) -> bool:
@@ -219,6 +228,7 @@ class Host:
             "ssl_port": self.ssl_port or "",
             "decommission_date": self.decommission_date or "",
             "cname": self.cname or "",
+            "ansible_tags": self.ansible_tags or "",
             **self.metadata,
         }
 
@@ -242,6 +252,7 @@ class Host:
             "ssl_port",
             "decommission_date",
             "cname",
+            "ansible_tags",
         }
 
         host_data = {}

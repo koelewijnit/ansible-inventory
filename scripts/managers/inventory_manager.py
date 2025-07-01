@@ -210,6 +210,11 @@ class InventoryManager:
                 for prod_group in product_groups:
                     inventory[prod_group]["hosts"][host_key] = None
 
+            # Add datacenter group if available
+            if host.datacenter:
+                datacenter_group = f"datacenter_{host.datacenter.lower().replace('-', '_')}"
+                inventory[datacenter_group]["hosts"][host_key] = None
+
         return dict(inventory)
 
     def write_inventory_file(

@@ -130,7 +130,7 @@ The import tool performs intelligent mapping to convert external inventory struc
    - mysql/postgres → databases
    - gitlab → CI/CD runners
 5. **Location Detection**: Extracts location from:
-   - Hostname patterns (use1, euw1, norwalk, etc.)
+   - Hostnames (use1, euw1, delta, etc.)
    - Host variables (location, datacenter, region)
 6. **Metadata Enhancement**: Generates missing fields with intelligent defaults
 
@@ -378,6 +378,47 @@ python scripts/ansible_inventory_cli.py lifecycle cleanup
 | `location` | ❌ | Geographic location | `us-east-1`, `europe-west1` |
 | `batch_number` | ❌ | Patch batch | `batch_1`, `batch_2` |
 | `patch_mode` | ❌ | Patching mode | `manual`, `auto` |
+| `ansible_tags` | ❌ | Comma-separated list of custom Ansible tags | `web, database, critical` |
+
+### **Using Ansible Tags**
+
+The `ansible_tags` column allows you to assign arbitrary tags to your hosts directly in the CSV. These tags are then included in the generated `host_vars` for each host. This enables powerful and flexible targeting in your Ansible playbooks using the `--tags` or `--skip-tags` command-line options.
+
+**How it works:**
+- When you generate the inventory, the value from the `ansible_tags` column for each host is added to its `host_vars`.
+- If a host has multiple tags, separate them with commas (e.g., `web, database, critical`).
+
+**Use Cases:**
+- **Granular Playbook Execution:** Run specific tasks only on hosts with certain tags.
+  ```bash
+  # Run tasks tagged 'security' only on hosts with 'web' tag
+  ansible-playbook my_playbook.yml --limit @web --tags security
+  ```
+- **Excluding Hosts from Tasks:** Skip tasks on hosts with specific tags.
+  ```bash
+  # Run all tasks except those tagged 'maintenance' on all production web servers
+  ansible-playbook webservers.yml -i inventory/production.yml --skip-tags maintenance
+  ```
+- **Categorizing Hosts:** Group hosts by custom criteria not covered by other fields.
+  ```csv
+  hostname,environment,ansible_tags
+  server1,production,frontend,nginx,critical
+  server2,production,backend,database
+  server3,development,test,experimental
+  ```
+  In your playbook, you can then target:
+  ```bash
+  # Target all 'critical' hosts
+  ansible all -i inventory/production.yml --list-hosts --limit @critical
+  ```
+- **Feature Rollouts:** Tag hosts participating in a new feature rollout.
+- **Compliance Audits:** Tag hosts that require specific compliance checks.
+
+**Important Considerations:**
+- Tags are free-form strings. Ensure consistency in naming to avoid issues.
+- Avoid using spaces within a single tag (e.g., use `web_server` instead of `web server`).
+- Ansible tags are case-sensitive.
+- The `ansible_tags` field is optional. If left empty, no custom tags will be added to the host's `host_vars` for that host.
 
 ---
 
@@ -389,12 +430,12 @@ The system includes standardized geographic location codes for consistent infras
 
 | Code | Location | Country | Region | Legacy ID |
 |------|----------|---------|---------|-----------|
-| `shh` | Shanwei | China | Asia Pacific | `shanwei` |
-| `tpe` | Taipei | Taiwan | Asia Pacific | `taipei` |
-| `lvg` | Las Vegas | United States | Americas | `lasvegas` |
-| `nrw` | Norwalk | United States | Americas | `norwalk` |
-| `htc` | Eindhoven | Netherlands | Europe | `eindhoven-htc` |
-| `eid` | Eindhoven | Netherlands | Europe | `eindhoven-eid` |
+| `alp` | Alpha | CountryA | RegionA | `alpha` |
+| `bet` | Beta | CountryB | RegionB | `beta` |
+| `gam` | Gamma | CountryC | RegionC | `gamma` |
+| `del` | Delta | CountryD | RegionD | `delta` |
+| `eps` | Epsilon | CountryE | RegionE | `epsilon-one` |
+| `zet` | Zeta | CountryF | RegionF | `zeta-two` |
 
 ### **Geographic Commands**
 
@@ -426,7 +467,164 @@ python scripts/geographic_utils.py lookup taipei
 python scripts/geographic_utils.py validate shh
 
 # Convert legacy to standard code
-python scripts/geographic_utils.py convert shanwei
+python scripts/geographic_utils.py convert alpha
+
+# Different output formats
+python scripts/geographic_utils.py list --format json
+python scripts/geographic_utils.py lookup taipei --format yaml
+```
+
+### **Location Information Includes**
+
+- **Standard Code**: Official 3-letter code (e.g., `shh`)
+- **Full Name**: Human-readable name (e.g., `Shanwei`)
+- **Country & Region**: Geographic classification
+- **Legacy Identifier**: Current naming in CSV files
+- **Timezone**: Local timezone for the location
+- **Currency**: Local currency code
+- **DNS/NTP Servers**: Regional infrastructure settings
+
+### **Usage in Infrastructure**
+
+The location codes are used in:
+- Host naming conventions (`prd-web-{location}-01`)
+- CSV location column values
+- Ansible group variables for regional settings
+- Network infrastructure configuration
+
+---
+
+## 🎯 **Ansible Integration**
+
+### **Group Targeting**
+
+#### **Application Service Groups**
+Target hosts by function across all products:
+
+```bash
+# All web servers (Apache + Nginx + others)
+ansible app_web_server -i inventory/production.yml --list-hosts
+
+# All databases (PostgreSQL + MongoDB + others)
+ansible app_database -i inventory/production.yml --list-hosts
+
+# All identity management systems
+ansible app_identity_management -i inventory/production.yml --list-hosts
+```
+
+#### **Product-Specific Groups**
+Target hosts by specific software:
+
+```bash
+# Only Apache HTTP servers
+ansible product_apache_httpd -i inventory/production.yml --list-hosts
+
+# Only PostgreSQL databases
+ansible product_postgresql -i inventory/production.yml --list-hosts
+
+# Only Kubernetes infrastructure
+ansible product_kubernetes -i inventory/production.yml --list-hosts
+```
+
+---
+
+## 🛡️ **Best Practices**
+
+### **Operational Best Practices**
+
+1. **Regular Health Checks**: Monitor inventory health daily
+2. **Staged Changes**: Always use `--dry-run` for lifecycle operations
+3. **Backup Before Changes**: CSV files are automatically backed up
+4. **Validate After Changes**: Run validation after any modifications
+5. **Environment Consistency**: Keep environments synchronized
+
+### **CSV Management Best Practices**
+
+1. **Version Control**: Keep CSV files in version control
+2. **Regular Backups**: Use automated backup strategies
+3. **Data Validation**: Validate data before importing
+4. **Consistent Formats**: Maintain consistent naming conventions
+5. **Documentation**: Document any custom fields or conventions
+
+---
+
+## 🔧 **Troubleshooting**
+
+### **Common Issues**
+
+#### **CSV File Not Found**
+```bash
+ERROR: CSV file not found: inventory_source/hosts.csv
+```
+**Solution**: Verify file path and permissions, or use `--csv-file` to specify correct path.
+
+#### **Invalid Date Format**
+```bash
+ERROR: Invalid date format: 12/31/2025. Use YYYY-MM-DD
+```
+**Solution**: Use ISO date format: `2025-12-31`
+
+### **Exit Codes**
+
+- **0**: Success
+- **1**: Command error (validation failed, invalid input)
+- **2**: File not found
+- **3**: Unexpected error
+
+---
+
+**Version**: 4.0.0  
+**Status**: Production Ready  
+**Team**: Infrastructure as Code Team
+
+---
+
+## 🌍 **Geographic Location Management**
+
+The system includes standardized geographic location codes for consistent infrastructure naming.
+
+### **Standard Location Codes**
+
+| Code | Location | Country | Region | Legacy ID |
+|------|----------|---------|---------|-----------|
+| `alp` | Alpha | CountryA | RegionA | `alpha` |
+| `bet` | Beta | CountryB | RegionB | `beta` |
+| `gam` | Gamma | CountryC | RegionC | `gamma` |
+| `del` | Delta | CountryD | RegionD | `delta` |
+| `eps` | Epsilon | CountryE | RegionE | `epsilon-one` |
+| `zet` | Zeta | CountryF | RegionF | `zeta-two` |
+
+### **Geographic Commands**
+
+#### **Using Make Commands**
+```bash
+# List all locations
+make geo-list
+
+# Lookup location details
+make geo-lookup-taipei
+make geo-lookup-shh
+
+# Validate location codes
+make geo-validate-eindhoven-eid
+
+# Convert between legacy and standard codes
+make geo-convert-shanwei
+```
+
+#### **Direct Script Usage**
+```bash
+# List all locations
+python scripts/geographic_utils.py list
+
+# Lookup specific location
+python scripts/geographic_utils.py lookup taipei
+
+# Validate location identifier
+python scripts/geographic_utils.py validate shh
+
+# Convert legacy to standard code
+python scripts/geographic_utils.py convert alpha
 
 # Different output formats
 python scripts/geographic_utils.py list --format json
