@@ -79,7 +79,9 @@ def setup_logging(log_level: str = "INFO") -> None:
 
 
 def load_csv_data(
-    csv_file: Optional[Path] = None, required_fields: Optional[List[str]] = None
+    csv_file: Optional[Path] = None,
+    required_fields: Optional[List[str]] = None,
+    inventory_key: str = "hostname"
 ) -> List[Dict[str, str]]:
     """
     Load and validate CSV data with comprehensive error handling.
@@ -87,6 +89,7 @@ def load_csv_data(
     Args:
         csv_file: Path to CSV file. Uses default if None.
         required_fields: Required field names to validate.
+        inventory_key: Primary key to use for inventory ("hostname" or "cname").
 
     Returns:
         List of dictionaries representing CSV rows.
@@ -118,11 +121,23 @@ def load_csv_data(
             for row_num, row in enumerate(
                 reader, start=2
             ):  # Start at 2 (header is row 1)
-                hostname = row.get("hostname", "").strip()
 
-                # Skip comments and empty rows
-                if not hostname or hostname.startswith("#"):
-                    continue
+                # Get the primary identifier based on inventory key
+                hostname = row.get("hostname", "").strip()
+                cname = row.get("cname", "").strip()
+
+                # Skip comments and empty rows based on inventory key
+                if inventory_key == "cname":
+                    # When using cname as primary key, skip if neither cname nor hostname is provided
+                    primary_id = cname or hostname
+                    if not primary_id or primary_id.startswith("#"):
+                        continue
+                else:
+                    # When using hostname as primary key, skip if hostname is empty
+                    # but allow fallback to cname if hostname is not available
+                    primary_id = hostname or cname
+                    if not primary_id or primary_id.startswith("#"):
+                        continue
 
                 # Clean up all string values
                 cleaned_row = {k: v.strip() if v else "" for k, v in row.items()}
@@ -698,10 +713,10 @@ def get_csv_template() -> str:
         String containing CSV template
     """
     from .config import get_csv_template_headers, ENVIRONMENTS, VALID_STATUS_VALUES, VALID_PATCH_MODES
-    
+
     headers = get_csv_template_headers()
     header_line = ",".join(headers)
-    
+
     return (
         f"{header_line}\n"
         "# Example hosts (remove # to activate):\n"

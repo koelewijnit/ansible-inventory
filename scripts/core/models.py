@@ -16,9 +16,9 @@ from typing import Any, Dict, List, Optional
 class Host:
     """Structured host data model with automatic validation."""
 
-    hostname: str
     environment: str
     status: str = "active"
+    hostname: Optional[str] = None
     application_service: Optional[str] = None
     product_id: Optional[str] = None
     datacenter: Optional[str] = None
@@ -42,8 +42,17 @@ class Host:
             ErrorMessages,
         )
 
-        if not self.hostname or not self.hostname.strip():
-            raise ValueError("Hostname is required")
+        # Validate that at least hostname or cname is provided
+        if not self.hostname and not self.cname:
+            raise ValueError("Either hostname or cname is required")
+
+        # If hostname is provided, validate it
+        if self.hostname and not self.hostname.strip():
+            raise ValueError("Hostname cannot be empty when provided")
+
+        # If cname is provided, validate it
+        if self.cname and not self.cname.strip():
+            raise ValueError("CNAME cannot be empty when provided")
 
         if self.environment not in ENVIRONMENTS:
             raise ValueError(
@@ -97,7 +106,8 @@ class Host:
                 )
 
         # Clean up string fields
-        self.hostname = self.hostname.strip()
+        if self.hostname:
+            self.hostname = self.hostname.strip()
         self.environment = self.environment.strip()
         self.status = self.status.strip()
 
@@ -141,21 +151,60 @@ class Host:
         return None
 
     def get_product_group_name(self) -> Optional[str]:
-        """Get product group name for inventory."""
+        """Get product group name for inventory (legacy - use get_product_group_names for multiple products)."""
         if self.product_id:
-            return f"product_{self.product_id}"
+            # For backward compatibility, return the first product group
+            product_ids = self.get_product_ids()
+            if product_ids:
+                return f"product_{product_ids[0]}"
         return None
+
+    def get_product_ids(self) -> List[str]:
+        """Get list of product IDs for this host (supports comma-separated values)."""
+        if not self.product_id:
+            return []
+        # Split on comma, clean up whitespace, and filter empty strings
+        return [p.strip() for p in self.product_id.split(',') if p.strip()]
+
+    def get_product_group_names(self) -> List[str]:
+        """Get all product group names for inventory (supports multiple products)."""
+        product_ids = self.get_product_ids()
+        return [f"product_{product_id}" for product_id in product_ids]
+
+    def has_product(self, product_id: str) -> bool:
+        """Check if host has a specific product installed."""
+        return product_id.strip() in self.get_product_ids()
+
+    def get_primary_product_id(self) -> Optional[str]:
+        """Get the primary (first) product ID for this host."""
+        product_ids = self.get_product_ids()
+        return product_ids[0] if product_ids else None
 
     def get_inventory_key_value(self, key_type: str = "hostname") -> str:
         """Get the value to use as inventory key based on the key type."""
-        if key_type == "cname" and self.cname:
-            return self.cname
-        return self.hostname
+        if key_type == "cname":
+            if self.cname:
+                return self.cname
+            elif self.hostname:
+                return self.hostname
+            else:
+                raise ValueError("No valid inventory key found: neither cname nor hostname is available")
+        else:  # key_type == "hostname"
+            if self.hostname:
+                return self.hostname
+            elif self.cname:
+                return self.cname
+            else:
+                raise ValueError("No valid inventory key found: neither hostname nor cname is available")
+
+    def get_host_vars_filename(self, key_type: str = "hostname") -> str:
+        """Get the filename to use for host_vars based on the inventory key type."""
+        return f"{self.get_inventory_key_value(key_type)}.yml"
 
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary for CSV/YAML output."""
         return {
-            "hostname": self.hostname,
+            "hostname": self.hostname or "",
             "environment": self.environment,
             "status": self.status,
             "application_service": self.application_service or "",
@@ -200,8 +249,12 @@ class Host:
 
         for k, v in row.items():
             clean_value = v.strip() if v is not None else None
+            # Convert empty strings to None for optional fields
             if k in known_fields:
-                host_data[k] = clean_value
+                if k in ["hostname", "cname"] and not clean_value:
+                    host_data[k] = None
+                else:
+                    host_data[k] = clean_value
             else:
                 metadata[k] = clean_value
 
@@ -307,7 +360,7 @@ class InventoryConfig:
     @classmethod
     def create_default(cls, inventory_key: str = "hostname") -> "InventoryConfig":
         """Create default configuration."""
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).parent.parent.parent
         return cls(
             project_root=project_root,
             csv_file=project_root / "inventory_source" / "hosts.csv",

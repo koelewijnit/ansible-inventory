@@ -50,8 +50,19 @@ class InventoryManager:
 
     def load_hosts(self, environment: Optional[str] = None) -> List[Host]:
         """Load hosts from CSV with optional environment filtering."""
+        # Determine required fields based on inventory key
+        if self.config.inventory_key == "cname":
+            # When using cname as primary key, either cname or hostname must be present
+            # but we'll let the Host model validation handle this
+            required_fields = ["environment"]
+        else:
+            # When using hostname as primary key, hostname is preferred but cname can be fallback
+            required_fields = ["environment"]
+
         csv_data = load_csv_data(
-            self.csv_file, required_fields=["hostname", "environment"]
+            self.csv_file,
+            required_fields=required_fields,
+            inventory_key=self.config.inventory_key
         )
         hosts: List[Host] = []
 
@@ -122,12 +133,20 @@ class InventoryManager:
         """Create host_vars file for a host."""
         ensure_directory_exists(str(host_vars_dir))
 
+        # Get the primary identifier for this host based on inventory key
+        primary_id = host.get_inventory_key_value(self.config.inventory_key)
+
         host_vars: Dict[str, Any] = {
-            "hostname": host.hostname,
+            "hostname": host.hostname or "",
             "cname": host.cname or "",
             "environment": host.environment,
             "application_service": host.application_service or "",
             "product_id": host.product_id or "",
+            "products": {
+                "installed": host.get_product_ids(),
+                "primary": host.get_primary_product_id() or "",
+                "count": len(host.get_product_ids())
+            },
             "datacenter": host.datacenter or "",
             "instance": host.instance or "",
             "status": host.status,
@@ -160,10 +179,12 @@ class InventoryManager:
 
         host_vars.update(host.metadata)
 
-        host_vars_file: Path = host_vars_dir / f"{host.hostname}.yml"
+        # Use the inventory key-based filename
+        host_vars_filename = host.get_host_vars_filename(self.config.inventory_key)
+        host_vars_file: Path = host_vars_dir / host_vars_filename
         with host_vars_file.open("w", encoding="utf-8") as f:
             f.write("---\n")
-            f.write(f"# Host variables for {host.hostname}\n")
+            f.write(f"# Host variables for {primary_id}\n")
             f.write(f"# {HOST_VARS_HEADER}\n")
             f.write("\n")
             yaml.dump(host_vars, f, default_flow_style=False, sort_keys=True)
@@ -183,9 +204,10 @@ class InventoryManager:
                 if app_group:
                     inventory[app_group]["hosts"][host_key] = None
 
+            # Support multiple products per host
             if host.product_id:
-                prod_group = host.get_product_group_name()
-                if prod_group:
+                product_groups = host.get_product_group_names()
+                for prod_group in product_groups:
                     inventory[prod_group]["hosts"][host_key] = None
 
         return dict(inventory)

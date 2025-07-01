@@ -51,10 +51,12 @@ class CommandRegistry:
         pass
 
 
-def register_commands() -> None: ...
+def register_commands() -> None:
+    ...
 
 
-def another_function() -> None: ...
+def another_function() -> None:
+    ...
 
 
 __all__ = [

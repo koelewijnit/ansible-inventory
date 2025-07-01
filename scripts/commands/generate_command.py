@@ -67,11 +67,11 @@ class GenerateCommand(BaseCommand):
         """Execute the generate command."""
         try:
             self.logger.info("🎯 Starting inventory generation")
-            
+
             # Create inventory manager with the specified inventory key
             inventory_manager = InventoryManager(
-                self.csv_file, 
-                self.logger, 
+                self.csv_file,
+                self.logger,
                 inventory_key=getattr(args, 'inventory_key', 'hostname')
             )
 

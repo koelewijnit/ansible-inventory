@@ -6,18 +6,16 @@ Handles comprehensive validation of inventory structure, data consistency,
 and health monitoring with scoring and recommendations.
 """
 
-import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
 
 from scripts.core import get_logger
-from scripts.core.config import CSV_FILE, HOST_VARS_DIR
+from scripts.core.config import CSV_FILE
 from scripts.core.models import InventoryConfig, ValidationResult
 from scripts.managers.inventory_manager import InventoryManager
 

@@ -30,10 +30,10 @@ _config_cache: Optional[Dict[str, Any]] = None
 def load_config() -> Dict[str, Any]:
     """Load configuration from YAML file with caching."""
     global _config_cache
-    
+
     if _config_cache is not None:
         return _config_cache
-    
+
     # Minimal essential defaults (only for critical functionality)
     # Most configuration should be in inventory-config.yml
     minimal_defaults = {
@@ -42,7 +42,7 @@ def load_config() -> Dict[str, Any]:
             "project_root": ".",
             "inventory_source": "inventory_source",
             "inventory": "inventory",
-            "host_vars": "inventory/host_vars", 
+            "host_vars": "inventory/host_vars",
             "group_vars": "inventory/group_vars",
             "backups": "backups",
             "logs": "logs"
@@ -62,7 +62,7 @@ def load_config() -> Dict[str, Any]:
             "level": "INFO"
         }
     }
-    
+
     # Try to load from YAML file
     if CONFIG_FILE.exists():
         try:
@@ -79,10 +79,10 @@ def load_config() -> Dict[str, Any]:
         print("Please copy inventory-config.yml.example to inventory-config.yml")
         print("Using minimal defaults - some features may not work correctly")
         config = minimal_defaults
-    
+
     # Apply environment variable overrides
     config = _apply_env_overrides(config)
-    
+
     _config_cache = config
     return config
 
@@ -90,13 +90,13 @@ def load_config() -> Dict[str, Any]:
 def _deep_merge(default: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Deep merge two dictionaries, with override taking precedence."""
     result = default.copy()
-    
+
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
-    
+
     return result
 
 
@@ -110,14 +110,14 @@ def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
         "INVENTORY_DEFAULT_STATUS": ("hosts", "default_status"),
         "INVENTORY_SUPPORT_GROUP": ("cmdb", "default_support_group"),
     }
-    
+
     for env_var, (section, key) in env_mappings.items():
         value = os.getenv(env_var)
         if value is not None:
             if section not in config:
                 config[section] = {}
             config[section][key] = value
-    
+
     return config
 
 
@@ -195,7 +195,7 @@ GRACE_PERIODS = _config.get("hosts", {}).get("grace_periods", {
 # Patch management
 PATCH_WINDOWS = _config.get("patch_management", {}).get("windows", {
     "batch_1": "Saturday 02:00-04:00 UTC",
-    "batch_2": "Saturday 04:00-06:00 UTC", 
+    "batch_2": "Saturday 04:00-06:00 UTC",
     "batch_3": "Saturday 06:00-08:00 UTC"
 })
 
@@ -235,7 +235,7 @@ EXAMPLE_COMMANDS = _config.get("examples", {}).get("commands", {
 def get_csv_template_headers() -> List[str]:
     """Get CSV template headers from configuration."""
     return _config.get("data", {}).get("csv_template_headers", [
-        "hostname", "environment", "status", "cname", "instance", 
+        "hostname", "environment", "status", "cname", "instance",
         "datacenter", "ssl_port", "application_service", "product_id",
         "primary_application", "function", "batch_number", "patch_mode",
         "dashboard_group", "decommission_date"
@@ -334,13 +334,13 @@ def get_default_inventory_key() -> str:
 def validate_configuration() -> List[str]:
     """
     Validate that the configuration file has all expected sections.
-    
+
     Returns:
         List of warnings about missing configuration sections
     """
     warnings = []
     config = get_config()
-    
+
     # Expected sections with their critical sub-keys
     expected_sections = {
         "data": ["csv_template_headers"],
@@ -354,7 +354,7 @@ def validate_configuration() -> List[str]:
         "headers": ["auto_generated", "host_vars"],
         "features": []  # Optional section
     }
-    
+
     for section, sub_keys in expected_sections.items():
         if section not in config:
             if section == "features":
@@ -366,7 +366,7 @@ def validate_configuration() -> List[str]:
             for sub_key in sub_keys:
                 if sub_key not in config[section]:
                     warnings.append(f"Missing configuration: '{section}.{sub_key}'")
-    
+
     return warnings
 
 
@@ -375,7 +375,7 @@ def print_configuration_status() -> None:
     print("📋 Configuration Status:")
     print(f"   Config file: {CONFIG_FILE}")
     print(f"   File exists: {'✅' if CONFIG_FILE.exists() else '❌'}")
-    
+
     if CONFIG_FILE.exists():
         warnings = validate_configuration()
         if warnings:
