@@ -1,0 +1,161 @@
+# Ansible Inventory Management Configuration
+# This file controls the behavior of all inventory management scripts
+# Edit this file to customize the system behavior
+
+# Version and metadata
+version: "2.0.0"
+description: "Ansible Inventory Management System Configuration"
+
+# Project structure - all paths relative to project root
+paths:
+  project_root: "."
+  inventory_source: "inventory_source"
+  inventory: "inventory"
+  host_vars: "inventory/host_vars"
+  group_vars: "inventory/group_vars"
+  backups: "backups"
+  logs: "logs"
+
+# Data sources
+data:
+  csv_file: "inventory_source/hosts.csv"
+  # CSV headers in logical order - modify to match your CSV structure
+  csv_template_headers:
+    - hostname
+    - environment
+    - status
+    - cname
+    - instance
+    - datacenter
+    - ssl_port
+    - application_service
+    - product_id
+    - primary_application
+    - function
+    - batch_number
+    - patch_mode
+    - dashboard_group
+    - decommission_date
+
+# Environment configuration
+environments:
+  # Supported environments - add/remove as needed
+  supported:
+    - production
+    - development
+    - test
+    - acceptance
+  # Short codes for environments (used in hostnames)
+  codes:
+    production: "prd"
+    development: "dev"
+    test: "tst"
+    acceptance: "acc"
+
+# Host configuration
+hosts:
+  # Valid status values for hosts
+  valid_status_values:
+    - active
+    - decommissioned
+  default_status: "active"
+  
+  # Valid patch modes
+  valid_patch_modes:
+    - auto
+    - manual
+  
+  # Inventory key configuration - which field to use as primary identifier
+  # Options: "hostname" or "cname"
+  inventory_key: "hostname"
+  
+  # Grace periods for cleanup after decommission (days)
+  grace_periods:
+    production: 90
+    acceptance: 30
+    test: 14
+    development: 7
+
+# Group naming patterns
+groups:
+  prefixes:
+    application: "app_"
+    product: "product_"
+    environment: "env_"
+
+# Patch management configuration
+patch_management:
+  # Patch windows by batch
+  windows:
+    batch_1: "Saturday 02:00-04:00 UTC"
+    batch_2: "Saturday 04:00-06:00 UTC"
+    batch_3: "Saturday 06:00-08:00 UTC"
+    dev_batch: "Friday 18:00-20:00 UTC"
+    test_batch: "Friday 20:00-22:00 UTC"
+    acc_batch: "Friday 22:00-24:00 UTC"
+
+# CMDB integration settings
+cmdb:
+  default_support_group: ""
+
+# File formats and patterns
+formats:
+  # Date and time formats
+  date: "%Y-%m-%d"
+  timestamp: "%Y%m%d_%H%M%S"
+  
+  # File extensions
+  yaml_extension: ".yml"
+  backup_extension: ".backup"
+  csv_extension: ".csv"
+  
+  # File naming patterns (use {variable} for substitution)
+  inventory_file_pattern: "{environment}.yml"
+  environment_group_var_pattern: "env_{environment}.yml"
+  host_var_file_pattern: "{hostname}.yml"
+
+# Display and UI settings
+display:
+  console_width: 60
+  tree_max_depth: 3
+
+# Logging configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# File headers and comments
+headers:
+  auto_generated: "AUTO-GENERATED FILE - DO NOT EDIT MANUALLY"
+  host_vars: "Generated from enhanced CSV with CMDB and patch management fields"
+
+# Validation settings
+validation:
+  # Required directories that must exist
+  required_directories:
+    - "inventory"
+    - "inventory/group_vars"
+    - "inventory/host_vars"
+  
+  # Expected environment files in group_vars
+  expected_env_files:
+    - "env_production.yml"
+    - "env_development.yml"
+    - "env_test.yml"
+    - "env_acceptance.yml"
+
+# Command examples for help text
+examples:
+  commands:
+    list_hosts: "ansible-inventory --list"
+    show_structure: "ansible-inventory --graph"
+    regenerate: "python3 scripts/ansible_inventory_cli.py generate"
+    validate: "python3 scripts/ansible_inventory_cli.py validate"
+    health_check: "python3 scripts/ansible_inventory_cli.py health"
+
+# Feature flags - enable/disable functionality
+features:
+  geographic_validation: true
+  patch_management: true
+  lifecycle_management: true
+  backup_on_generate: false
+  strict_validation: false 

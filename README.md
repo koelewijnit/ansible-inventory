@@ -41,11 +41,15 @@ python scripts/ansible_inventory_cli.py --help
 
 ```
 ansible-inventory/
+├── inventory-config.yml            # ⚙️ Main configuration file
 ├── scripts/
 │   ├── ansible_inventory_cli.py    # 🎯 Main CLI tool
-│   ├── config.py                   # 📋 Configuration
-│   ├── utils.py                    # 🔧 Utilities
-│   └── models.py                   # 📊 Data models
+│   ├── core/
+│   │   ├── config.py               # 📋 Configuration loader
+│   │   ├── models.py               # 📊 Data models
+│   │   └── utils.py                # 🔧 Utilities
+│   ├── commands/                   # 📁 Command implementations
+│   └── managers/                   # 📁 Business logic
 ├── inventory_source/
 │   └── hosts.csv                   # 📝 Host data (CSV format)
 ├── inventory/                      # 📂 Generated inventories
@@ -204,17 +208,32 @@ python scripts/ansible_inventory_cli.py lifecycle cleanup
 
 ## ⚙️ **Configuration**
 
-### **Global Options**
+The system is configured through `inventory-config.yml` in the project root. This YAML file controls all aspects of the inventory management system.
+
+### **Configuration File**
+Edit `inventory-config.yml` to customize:
+- Supported environments and their codes
+- CSV headers and data validation
+- Inventory key preference (hostname vs cname)
+- Grace periods for host cleanup
+- Patch management windows
+- File paths and naming patterns
+- Display and logging settings
+
+### **Environment Variable Overrides**
+```bash
+# Override key settings via environment variables
+export INVENTORY_CSV_FILE="/path/to/custom/hosts.csv"
+export INVENTORY_LOG_LEVEL="DEBUG"
+export INVENTORY_KEY="cname"
+export INVENTORY_SUPPORT_GROUP="Custom Support Team"
+```
+
+### **Global CLI Options**
 - `--csv-file`: Custom CSV data source
 - `--output-format`: text (default) or json
 - `--log-level`: DEBUG, INFO, WARNING, ERROR
-
-### **Environment Variables**
-The system supports configuration through `scripts/config.py` for:
-- Default paths and directories
-- Environment definitions
-- Grace periods for cleanup
-- Patch management windows
+- `--inventory-key`: hostname (default) or cname
 
 ## 🚀 **Enterprise Features**
 

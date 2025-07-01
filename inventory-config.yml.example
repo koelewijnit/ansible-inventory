@@ -1,0 +1,217 @@
+# Ansible Inventory Management Configuration Template
+# Copy this file to inventory-config.yml and customize for your environment
+# 
+# This file controls the behavior of all inventory management scripts
+# Edit settings below to match your infrastructure and requirements
+
+# Version and metadata
+version: "2.0.0"
+description: "Ansible Inventory Management System Configuration"
+
+# Project structure - all paths relative to project root
+paths:
+  project_root: "."
+  inventory_source: "inventory_source"
+  inventory: "inventory"
+  host_vars: "inventory/host_vars"
+  group_vars: "inventory/group_vars"
+  backups: "backups"
+  logs: "logs"
+
+# Data sources
+data:
+  csv_file: "inventory_source/hosts.csv"
+  # CSV headers in logical order - modify to match your CSV structure
+  # NOTE: These should match your actual CSV file headers exactly
+  csv_template_headers:
+    - hostname          # Required: Unique host identifier
+    - environment       # Required: Environment name
+    - status           # Required: Host status (active/decommissioned)
+    - cname            # Optional: Canonical name/FQDN
+    - instance         # Optional: Instance number
+    - datacenter       # Optional: Datacenter/location code
+    - ssl_port         # Optional: SSL port number
+    - application_service  # Optional: Service type
+    - product_id       # Optional: Product identifier
+    - primary_application  # Optional: Primary application
+    - function         # Optional: Host function/role
+    - batch_number     # Optional: Patch batch number
+    - patch_mode       # Optional: Patching mode (auto/manual)
+    - dashboard_group  # Optional: Monitoring dashboard group
+    - decommission_date # Optional: Decommission date (YYYY-MM-DD)
+
+# Environment configuration
+environments:
+  # Supported environments - add/remove/modify as needed for your organization
+  supported:
+    - production
+    - development
+    - test
+    - acceptance
+    # Add custom environments here:
+    # - staging
+    # - qa
+    # - demo
+    
+  # Short codes for environments (used in hostnames)
+  # Modify these to match your naming conventions
+  codes:
+    production: "prd"
+    development: "dev"
+    test: "tst"
+    acceptance: "acc"
+    # Add codes for custom environments:
+    # staging: "stg"
+    # qa: "qa"
+    # demo: "demo"
+
+# Host configuration
+hosts:
+  # Valid status values for hosts - customize as needed
+  valid_status_values:
+    - active
+    - decommissioned
+    # Add custom statuses:
+    # - maintenance
+    # - planned
+    # - retiring
+    
+  default_status: "active"
+  
+  # Valid patch modes - customize for your patch management
+  valid_patch_modes:
+    - auto
+    - manual
+    # Add custom modes:
+    # - scheduled
+    # - emergency
+  
+  # Inventory key configuration - which field to use as primary identifier
+  # Options: "hostname" or "cname"
+  # hostname: Use the hostname field as the key in inventory files
+  # cname: Use the cname field (falls back to hostname if cname empty)
+  inventory_key: "hostname"
+  
+  # Grace periods for cleanup after decommission (days)
+  # Customize based on your organization's requirements
+  grace_periods:
+    production: 90     # 3 months for production
+    acceptance: 30     # 1 month for acceptance
+    test: 14           # 2 weeks for test
+    development: 7     # 1 week for development
+    # Add grace periods for custom environments:
+    # staging: 21
+    # qa: 14
+
+# Group naming patterns
+# Customize prefixes to match your organization's conventions
+groups:
+  prefixes:
+    application: "app_"      # e.g., app_web_server
+    product: "product_"      # e.g., product_apache_httpd
+    environment: "env_"      # e.g., env_production
+    # Add custom group types:
+    # location: "loc_"
+    # team: "team_"
+
+# Patch management configuration
+# Customize windows to match your organization's maintenance schedules
+patch_management:
+  # Patch windows by batch - modify times and add/remove batches as needed
+  windows:
+    batch_1: "Saturday 02:00-04:00 UTC"
+    batch_2: "Saturday 04:00-06:00 UTC"
+    batch_3: "Saturday 06:00-08:00 UTC"
+    dev_batch: "Friday 18:00-20:00 UTC"
+    test_batch: "Friday 20:00-22:00 UTC"
+    acc_batch: "Friday 22:00-24:00 UTC"
+    # Add custom batches:
+    # emergency_batch: "Daily 01:00-02:00 UTC"
+    # weekend_batch: "Sunday 06:00-08:00 UTC"
+
+# CMDB integration settings
+# Customize for your organization's CMDB/ticketing system
+cmdb:
+  default_support_group: "TCS Compute Support Group"
+  # Add other CMDB settings:
+  # default_owner: "Infrastructure Team"
+  # default_environment_type: "Physical"
+  # change_management_required: true
+
+# File formats and patterns
+formats:
+  # Date and time formats - customize if your organization uses different formats
+  date: "%Y-%m-%d"               # YYYY-MM-DD format
+  timestamp: "%Y%m%d_%H%M%S"     # YYYYMMDD_HHMMSS format
+  
+  # File extensions - generally should not be changed
+  yaml_extension: ".yml"
+  backup_extension: ".backup"
+  csv_extension: ".csv"
+  
+  # File naming patterns (use {variable} for substitution)
+  # Customize if your organization has different naming conventions
+  inventory_file_pattern: "{environment}.yml"
+  environment_group_var_pattern: "env_{environment}.yml"
+  host_var_file_pattern: "{hostname}.yml"
+
+# Display and UI settings
+display:
+  console_width: 60      # Width for console output formatting
+  tree_max_depth: 3      # Maximum depth for tree displays
+
+# Logging configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # Customize logging level based on your needs:
+  # DEBUG: Verbose output for troubleshooting
+  # INFO: Normal operational messages (recommended)
+  # WARNING: Only warnings and errors
+  # ERROR: Only error messages
+
+# File headers and comments
+# Customize these messages for your organization
+headers:
+  auto_generated: "AUTO-GENERATED FILE - DO NOT EDIT MANUALLY"
+  host_vars: "Generated from enhanced CSV with CMDB and patch management fields"
+  # Add custom headers:
+  # organization: "Generated by ACME Corp Infrastructure Team"
+
+# Validation settings
+validation:
+  # Required directories that must exist - generally should not be modified
+  required_directories:
+    - "inventory"
+    - "inventory/group_vars"
+    - "inventory/host_vars"
+  
+  # Expected environment files in group_vars
+  # These are automatically generated based on the environments.supported list
+  # This section is mostly for reference
+  expected_env_files:
+    - "env_production.yml"
+    - "env_development.yml"
+    - "env_test.yml"
+    - "env_acceptance.yml"
+
+# Command examples for help text
+# Customize these commands for your organization's workflow
+examples:
+  commands:
+    list_hosts: "ansible-inventory --list"
+    show_structure: "ansible-inventory --graph"
+    regenerate: "python3 scripts/ansible_inventory_cli.py generate"
+    validate: "python3 scripts/ansible_inventory_cli.py validate"
+    health_check: "python3 scripts/ansible_inventory_cli.py health"
+
+# Feature flags - enable/disable functionality
+# Use these to control which features are available
+features:
+  geographic_validation: true    # Enable geographic location validation
+  patch_management: true         # Enable patch management features
+  lifecycle_management: true     # Enable host lifecycle management
+  backup_on_generate: false      # Create backups before generating new files
+  strict_validation: false       # Enable strict validation mode
+  # Add custom feature flags:
+  # cmdb_integration: true
+  # compliance_reporting: false 

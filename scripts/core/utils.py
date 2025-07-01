@@ -621,27 +621,12 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
         ValidationResult with detailed validation results
     """
     from .models import Host
+    from .config import get_csv_template_headers
 
     result = ValidationResult()
 
-    # Expected headers based on Host model (in logical order)
-    expected_headers = [
-        "hostname",
-        "environment",
-        "status",
-        "cname",
-        "instance",
-        "datacenter",
-        "ssl_port",
-        "application_service",
-        "product_id",
-        "primary_application",
-        "function",
-        "batch_number",
-        "patch_mode",
-        "dashboard_group",
-        "decommission_date",
-    ]
+    # Expected headers from configuration
+    expected_headers = get_csv_template_headers()
 
     # Validate headers first
     header_validation = validate_csv_headers(csv_file, expected_headers)
@@ -701,7 +686,7 @@ def get_csv_template() -> str:
     """
     Get a CSV template with all required headers and example data.
 
-    Headers are organized logically:
+    Headers are loaded from configuration and organized logically:
     - Required fields first (hostname, environment, status)
     - Identity fields (cname, instance)
     - Infrastructure fields (datacenter, ssl_port)
@@ -712,10 +697,13 @@ def get_csv_template() -> str:
     Returns:
         String containing CSV template
     """
+    from .config import get_csv_template_headers, ENVIRONMENTS, VALID_STATUS_VALUES, VALID_PATCH_MODES
+    
+    headers = get_csv_template_headers()
+    header_line = ",".join(headers)
+    
     return (
-        "hostname,environment,status,cname,instance,datacenter,ssl_port,"
-        "application_service,product_id,primary_application,function,"
-        "batch_number,patch_mode,dashboard_group,decommission_date\n"
+        f"{header_line}\n"
         "# Example hosts (remove # to activate):\n"
         "# prd-web-use1-01,production,active,,1,us-east-1,443,"
         "web,webapp,WebApp,frontend,1,auto,Web,\n"
@@ -728,9 +716,9 @@ def get_csv_template() -> str:
         "# Required fields: hostname, environment, status\n"
         "# Optional fields: all others\n"
         "# Data types: instance, batch_number, and ssl_port must be integers\n"
-        "# Status values: active, decommissioned\n"
-        "# Environment values: production, development, test, acceptance\n"
-        "# Patch modes: auto, manual\n"
+        f"# Status values: {', '.join(VALID_STATUS_VALUES)}\n"
+        f"# Environment values: {', '.join(ENVIRONMENTS)}\n"
+        f"# Patch modes: {', '.join(VALID_PATCH_MODES)}\n"
     )
 
 
