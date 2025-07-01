@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from core import CSV_FILE as DEFAULT_CSV_FILE
 from core import (
-    CSV_FILE as DEFAULT_CSV_FILE,
     DEFAULT_SUPPORT_GROUP,
     HOST_VARS_HEADER,
     ensure_directory_exists,

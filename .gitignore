@@ -304,4 +304,12 @@ local_settings.py
 
 # CI/CD specific
 .github/secrets/
-.gitlab/secrets/ 
+.gitlab/secrets/
+
+# Security reports and scans
+security-report.json
+security-report-*.json
+bandit-report.json
+bandit-report-*.json
+*.security-report
+*.bandit-report 

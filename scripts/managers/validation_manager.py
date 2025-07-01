@@ -10,15 +10,16 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
-from typing import Optional, Dict, Any, List
-import yaml
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from scripts.core import get_logger
 from scripts.core.config import CSV_FILE, HOST_VARS_DIR
-from scripts.managers.inventory_manager import InventoryManager
 from scripts.core.models import InventoryConfig, ValidationResult
+from scripts.managers.inventory_manager import InventoryManager
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:

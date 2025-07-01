@@ -7,7 +7,7 @@ scripts. Modify values here to change behavior across all scripts.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 # Version information
 VERSION: str = "2.0.0"

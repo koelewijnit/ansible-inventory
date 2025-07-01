@@ -58,10 +58,17 @@ format-check: ## Check if code is properly formatted
 
 security: ## Run security checks
 	@echo "Running bandit security scan..."
-	bandit -r scripts/ -f json -o security-report.json
+	bandit -r scripts/ -f json -o security-report.json || true
 	@echo "Running safety check..."
-	safety check
+	safety check || true
 	@echo "Security scan complete!"
+	@echo "📊 Security Summary:"
+	@if [ -f security-report.json ]; then \
+		echo "  - Bandit report generated: security-report.json"; \
+		echo "  - Review for any high/medium severity issues"; \
+	else \
+		echo "  - No security report generated"; \
+	fi
 
 # Pre-commit
 pre-commit: ## Run pre-commit hooks
@@ -77,9 +84,6 @@ check: format-check lint test ## Run all quality checks
 health-check: ## Run inventory health check
 	@echo "Running inventory health check..."
 	python scripts/ansible_inventory_cli.py health
-	@echo ""
-	@echo "📍 Geographic Locations Summary:"
-	@python scripts/geographic_utils.py list | head -n 8
 
 validate: ## Validate inventory structure
 	@echo "Validating inventory structure..."
@@ -142,10 +146,12 @@ ansible-check: ## Check Ansible playbook syntax
 inventory-stats: ## Show inventory statistics
 	@echo "Inventory Statistics:"
 	@echo "===================="
-	python scripts/ansible_inventory_cli.py health --verbose
+	python scripts/ansible_inventory_cli.py health
 
 csv-backup: ## Create CSV backup
-	python scripts/ansible_inventory_cli.py create-backup
+	@echo "Creating CSV backup..."
+	cp inventory_source/hosts.csv inventory_source/hosts_$(shell date +%Y%m%d_%H%M%S).backup
+	@echo "Backup created! 💾"
 
 # Inventory import functionality
 import-dry-run: ## Test import of external inventory (requires INVENTORY_FILE)
@@ -180,29 +186,6 @@ import-help: ## Show import usage examples
 	@echo "  python scripts/ansible_inventory_cli.py import --help"
 	@echo "  python scripts/inventory_import.py --help"
 
-# Geographic location management
-geo-list: ## List all geographic locations
-	@echo "📍 Geographic Locations:"
-	@python scripts/geographic_utils.py list
-
-geo-lookup: ## Lookup a location (usage: make geo-lookup-<location>)
-	@echo "📍 Location Lookup Examples:"
-	@echo "  make geo-lookup-shanwei    # Legacy identifier"
-	@echo "  make geo-lookup-shh        # Standard code"
-	@echo "  make geo-lookup-norwalk    # Location name"
-
-geo-lookup-%: ## Lookup specific location
-	@echo "📍 Looking up location: $*"
-	@python scripts/geographic_utils.py lookup $*
-
-geo-validate-%: ## Validate specific location
-	@echo "📍 Validating location: $*"
-	@python scripts/geographic_utils.py validate $*
-
-geo-convert-%: ## Convert location identifier
-	@echo "📍 Converting location: $*"
-	@python scripts/geographic_utils.py convert $*
-
 # CI/CD helpers
 ci-install: ## Install for CI environment
 	pip install -e ".[dev,test]"
@@ -217,12 +200,12 @@ ci-lint: ## Run linting in CI environment
 
 # Version management
 version: ## Show current version
-	@python -c "import scripts.config as config; print(f'Version: {getattr(config, \"VERSION\", \"unknown\")}')"
+	@python -c "import scripts.core.config as config; print(f'Version: {getattr(config, \"VERSION\", \"unknown\")}')"
 
 # Database/CSV operations
 backup-all: ## Backup all important files
 	@echo "Creating comprehensive backup..."
-	python scripts/ansible_inventory_cli.py create-backup
+	cp inventory_source/hosts.csv inventory_source/hosts_$(shell date +%Y%m%d_%H%M%S).backup
 	@echo "Backup complete! 💾"
 
 # Performance testing

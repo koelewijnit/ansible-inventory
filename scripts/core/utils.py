@@ -9,6 +9,7 @@ scripts to eliminate code duplication and ensure consistency.
 import csv
 import logging
 import os
+import subprocess
 import sys
 from datetime import datetime
 from functools import wraps
@@ -16,7 +17,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
-import subprocess
 
 from .models import ValidationResult
 
@@ -627,7 +627,7 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
     # Expected headers based on Host model (in logical order)
     expected_headers = [
         "hostname",
-        "environment", 
+        "environment",
         "status",
         "cname",
         "instance",
@@ -700,7 +700,7 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
 def get_csv_template() -> str:
     """
     Get a CSV template with all required headers and example data.
-    
+
     Headers are organized logically:
     - Required fields first (hostname, environment, status)
     - Identity fields (cname, instance)

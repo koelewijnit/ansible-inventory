@@ -12,9 +12,10 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from scripts.core import get_logger, CSV_FILE as DEFAULT_CSV_FILE
+from scripts.core import CSV_FILE as DEFAULT_CSV_FILE
+from scripts.core import get_logger
 from scripts.core.config import PROJECT_ROOT
 from scripts.core.models import InventoryConfig
 

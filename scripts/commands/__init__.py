@@ -6,7 +6,7 @@ This package contains all command implementations following a consistent interfa
 """
 
 from pathlib import Path
-from typing import Optional, List, Type
+from typing import List, Optional, Type
 
 from .base import BaseCommand, CommandResult
 from .generate_command import GenerateCommand
