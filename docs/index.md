@@ -72,7 +72,7 @@ This guide walks you through the complete workflow:
 <div class="grid" markdown>
 
 -   **Total Documentation**: 7 guides, 2,800+ lines
--   **CLI Commands**: 6 main commands with 50+ options
+-   **CLI Commands**: 5 main commands with 50+ options
 -   **Supported Environments**: Production, Development, Test, Acceptance
 -   **Code Quality**: 100% test coverage, automated linting
 -   **Security**: Automated security scanning with Bandit

@@ -55,7 +55,7 @@ Examples:
   %(prog)s lifecycle cleanup --dry-run
 
   # Import existing inventories
-  %(prog)s import --inventory-file legacy_inventory.yml --dry-run
+  
 
   
 
@@ -102,10 +102,7 @@ https://github.com/your-org/inventory-structure
                 command_parser = subparsers.add_parser(
                     command_name, help="Host lifecycle management"
                 )
-            elif command_name == "import":
-                command_parser = subparsers.add_parser(
-                    command_name, help="Import existing Ansible inventories"
-                )
+            
             elif command_name == "generate":
                 command_parser = subparsers.add_parser(
                     command_name, help="Generate inventory files from CSV"
