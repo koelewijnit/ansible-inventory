@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from commands import CommandRegistry
+from commands.base import CommandRegistry
 from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging
 
 # Add current directory to path for imports
@@ -196,6 +196,9 @@ https://github.com/your-org/inventory-structure
             lines = []
             if result.get("message"):
                 lines.append(f"✅ {result['message']}")
+
+            if result.get("data"):
+                lines.append(json.dumps(result["data"], indent=2, default=str))
 
             # Show timing if available
             if "execution_time" in result:

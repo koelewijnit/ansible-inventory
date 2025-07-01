@@ -5,7 +5,7 @@ Enterprise-grade Ansible inventory management with unified CLI, automated lifecy
 ## 🆕 **New User? Start Here!**
 
 **Want to add a new system to the inventory?** 
-👉 **[Simple Guide: Adding New Systems](docs/ADDING_SYSTEMS.md)**
+👉 **[Simple Guide: Adding New Systems](docs/reference/adding-systems.md)**
 
 This guide walks you through the complete workflow:
 1. Add system to CSV → 2. Generate inventory → 3. Commit to git → 4. Push changes
@@ -247,8 +247,6 @@ export INVENTORY_SUPPORT_GROUP="Custom Support Team"
 ## 📖 **Documentation**
 
 - **USER_GUIDE.md**: Complete user documentation with examples
-- **MIGRATION.md**: Migration guide from older script-based systems
-- **scripts/archive/**: Historical documentation and implementation details
 
 ## 🛡️ **Production Ready**
 

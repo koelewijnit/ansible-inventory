@@ -8,6 +8,7 @@ variables can override YAML settings.
 """
 
 import os
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -25,6 +26,7 @@ CONFIG_FILE: Path = PROJECT_ROOT / "inventory-config.yml"
 
 # Global configuration cache
 _config_cache: Optional[Dict[str, Any]] = None
+_config_lock = threading.Lock()
 
 
 def load_config() -> Dict[str, Any]:
@@ -34,57 +36,61 @@ def load_config() -> Dict[str, Any]:
     if _config_cache is not None:
         return _config_cache
 
-    # Minimal essential defaults (only for critical functionality)
-    # Most configuration should be in inventory-config.yml
-    minimal_defaults = {
-        "version": "2.0.0",
-        "paths": {
-            "project_root": ".",
-            "inventory_source": "inventory_source",
-            "inventory": "inventory",
-            "host_vars": "inventory/host_vars",
-            "group_vars": "inventory/group_vars",
-            "backups": "backups",
-            "logs": "logs"
-        },
-        "data": {
-            "csv_file": "inventory_source/hosts.csv"
-        },
-        "environments": {
-            "supported": ["production", "development", "test", "acceptance"]
-        },
-        "hosts": {
-            "valid_status_values": ["active", "decommissioned"],
-            "default_status": "active",
-            "inventory_key": "hostname"
-        },
-        "logging": {
-            "level": "INFO"
-        }
-    }
+    with _config_lock:
+        if _config_cache is not None:
+            return _config_cache
 
-    # Try to load from YAML file
-    if CONFIG_FILE.exists():
-        try:
-            with CONFIG_FILE.open("r", encoding="utf-8") as f:
-                yaml_config = yaml.safe_load(f) or {}
-                # Merge with minimal defaults (YAML overrides defaults)
-                config = _deep_merge(minimal_defaults, yaml_config)
-        except Exception as e:
-            print(f"Warning: Failed to load {CONFIG_FILE}: {e}")
+        # Minimal essential defaults (only for critical functionality)
+        # Most configuration should be in inventory-config.yml
+        minimal_defaults = {
+            "version": "2.0.0",
+            "paths": {
+                "project_root": ".",
+                "inventory_source": "inventory_source",
+                "inventory": "inventory",
+                "host_vars": "inventory/host_vars",
+                "group_vars": "inventory/group_vars",
+                "backups": "backups",
+                "logs": "logs"
+            },
+            "data": {
+                "csv_file": "inventory_source/hosts.csv"
+            },
+            "environments": {
+                "supported": ["production", "development", "test", "acceptance"]
+            },
+            "hosts": {
+                "valid_status_values": ["active", "decommissioned"],
+                "default_status": "active",
+                "inventory_key": "hostname"
+            },
+            "logging": {
+                "level": "INFO"
+            }
+        }
+
+        # Try to load from YAML file
+        if CONFIG_FILE.exists():
+            try:
+                with CONFIG_FILE.open("r", encoding="utf-8") as f:
+                    yaml_config = yaml.safe_load(f) or {}
+                    # Merge with minimal defaults (YAML overrides defaults)
+                    config = _deep_merge(minimal_defaults, yaml_config)
+            except Exception as e:
+                print(f"Warning: Failed to load {CONFIG_FILE}: {e}")
+                print("Using minimal defaults - some features may not work correctly")
+                config = minimal_defaults
+        else:
+            print(f"Warning: Configuration file {CONFIG_FILE} not found")
+            print("Please copy inventory-config.yml.example to inventory-config.yml")
             print("Using minimal defaults - some features may not work correctly")
             config = minimal_defaults
-    else:
-        print(f"Warning: Configuration file {CONFIG_FILE} not found")
-        print("Please copy inventory-config.yml.example to inventory-config.yml")
-        print("Using minimal defaults - some features may not work correctly")
-        config = minimal_defaults
 
-    # Apply environment variable overrides
-    config = _apply_env_overrides(config)
+        # Apply environment variable overrides
+        config = _apply_env_overrides(config)
 
-    _config_cache = config
-    return config
+        _config_cache = config
+        return config
 
 
 def _deep_merge(default: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -254,15 +260,14 @@ def get_csv_file_path() -> Path:
 
 def get_available_csv_files() -> List[Path]:
     """Get list of available CSV files in inventory_source directory."""
-    csv_files = []
-    if INVENTORY_SOURCE_DIR.exists():
-        for file in INVENTORY_SOURCE_DIR.glob("*.csv"):
-            csv_files.append(file)
-    return sorted(csv_files)
+    csv_file = get_csv_file_path()
+    if csv_file.exists():
+        return [csv_file]
+    return []
 
 
 def validate_csv_file(csv_path: str) -> Tuple[bool, str]:
-    """Validate that a CSV file exists and is readable."""
+    """Validate that a CSV file exists, is readable, and has a valid header."""
     path = Path(csv_path)
     if not path.exists():
         return False, f"File not found: {csv_path}"
@@ -272,8 +277,10 @@ def validate_csv_file(csv_path: str) -> Tuple[bool, str]:
         return False, f"Not a CSV file: {csv_path}"
     try:
         with path.open("r", encoding="utf-8") as f:
-            # Try to read first line to ensure it's readable
-            f.readline()
+            header = f.readline().strip().split(',')
+            expected_headers = get_csv_template_headers()
+            if header != expected_headers:
+                return False, f"Invalid CSV header. Expected {expected_headers}, but got {header}"
         return True, "Valid CSV file"
     except Exception as e:
         return False, f"Cannot read file: {e}"
