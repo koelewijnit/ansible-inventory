@@ -23,12 +23,14 @@ if str(SCRIPT_DIR) not in sys.path:
 class LifecycleCommand(BaseCommand):
     """Command to manage host lifecycle operations."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
-        self.host_manager = HostManager(csv_file, logger)
+        self.host_manager = HostManager(csv_file, self.logger)
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add lifecycle-specific arguments to parser."""
         lifecycle_subparsers = parser.add_subparsers(
             dest="lifecycle_action", help="Lifecycle actions"
@@ -76,7 +78,7 @@ class LifecycleCommand(BaseCommand):
             "--max-hosts", type=int, help="Maximum number of hosts to clean up"
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the lifecycle command."""
         try:
             action = getattr(args, "lifecycle_action", None)
@@ -98,7 +100,7 @@ class LifecycleCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _handle_decommission(self, args) -> Dict[str, Any]:
+    def _handle_decommission(self, args: Any) -> Dict[str, Any]:
         """Handle host decommissioning."""
         self.logger.info(f"🔄 Decommissioning host: {args.hostname}")
 
@@ -130,7 +132,7 @@ class LifecycleCommand(BaseCommand):
             error_msg = f"Failed to decommission host {args.hostname}"
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _handle_list_expired(self, args) -> Dict[str, Any]:
+    def _handle_list_expired(self, args: Any) -> Dict[str, Any]:
         """Handle listing expired hosts."""
         self.logger.info("📋 Listing expired hosts")
 
@@ -150,7 +152,7 @@ class LifecycleCommand(BaseCommand):
 
         return CommandResult(success=True, data=result_data, message=message).to_dict()
 
-    def _handle_cleanup(self, args) -> Dict[str, Any]:
+    def _handle_cleanup(self, args: Any) -> Dict[str, Any]:
         """Handle cleaning up expired hosts."""
         self.logger.info("🧹 Cleaning up expired hosts")
 
@@ -196,7 +198,7 @@ class LifecycleCommand(BaseCommand):
             action_text = "Would decommission" if dry_run else "Decommissioned"
 
             lines = [
-                f"🔄 HOST DECOMMISSIONING",
+                "🔄 HOST DECOMMISSIONING",
                 f"{action_emoji} {action_text} host: {hostname}",
                 f"Date: {date}",
             ]

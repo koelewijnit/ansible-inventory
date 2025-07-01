@@ -13,12 +13,14 @@ from typing import Any, Dict, Optional
 class BaseCommand(ABC):
     """Base interface for all CLI commands."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         self.csv_file = csv_file
         self.logger = logger
 
     @abstractmethod
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the command with the given arguments.
 
         Args:
@@ -30,7 +32,7 @@ class BaseCommand(ABC):
         pass
 
     @abstractmethod
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add command-specific arguments to the parser.
 
         Args:
@@ -45,10 +47,10 @@ class CommandResult:
     def __init__(
         self,
         success: bool = True,
-        data: Dict[str, Any] = None,
+        data: Optional[Dict[str, Any]] = None,
         message: str = "",
         error: str = "",
-    ):
+    ) -> None:
         self.success = success
         self.data = data or {}
         self.message = message

@@ -23,12 +23,14 @@ if str(SCRIPT_DIR) not in sys.path:
 class GenerateCommand(BaseCommand):
     """Command to generate inventory files and host variables."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
-        self.inventory_manager = InventoryManager(csv_file, logger)
+        self.inventory_manager = InventoryManager(csv_file, self.logger)
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add generate-specific arguments to parser."""
         parser.add_argument(
             "--output-dir",
@@ -55,7 +57,7 @@ class GenerateCommand(BaseCommand):
             help="Show what would be generated without creating files",
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the generate command."""
         try:
             self.logger.info("🎯 Starting inventory generation")
@@ -103,7 +105,7 @@ class GenerateCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _dry_run_generate(self, args) -> Dict[str, Any]:
+    def _dry_run_generate(self, args: Any) -> Dict[str, Any]:
         """Perform a dry run to show what would be generated."""
         try:
             # Load hosts to show what would be processed
@@ -229,10 +231,10 @@ class GenerateCommand(BaseCommand):
         else:
             stats = data.get("statistics", {})
             output_dir = data.get("output_paths", {}).get("inventory_dir", "inventory")
-            
+
             lines = [
                 "✅ INVENTORY GENERATION COMPLETED",
-                f"📊 Statistics:",
+                "📊 Statistics:",
                 f"   Total hosts: {stats.get('total_hosts', 0)}",
                 f"   Active: {stats.get('active_hosts', 0)}",
                 f"   Decommissioned: {stats.get('decommissioned_hosts', 0)}",

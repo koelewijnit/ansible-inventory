@@ -33,7 +33,7 @@ class Host:
     cname: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate data after initialization."""
         from .config import (
             ENVIRONMENTS,
@@ -59,7 +59,8 @@ class Host:
 
         if self.patch_mode and self.patch_mode not in VALID_PATCH_MODES:
             raise ValueError(
-                f"Invalid patch_mode: {self.patch_mode}. Must be one of: {VALID_PATCH_MODES}"
+                f"Invalid patch_mode: {self.patch_mode}. "
+                f"Must be one of: {VALID_PATCH_MODES}"
             )
 
         if self.ssl_port:
@@ -75,7 +76,8 @@ class Host:
                 datetime.strptime(self.decommission_date, "%Y-%m-%d")
             except ValueError:
                 raise ValueError(
-                    f"Invalid decommission_date: {self.decommission_date}. Must be in YYYY-MM-DD format."
+                    f"Invalid decommission_date: {self.decommission_date}. "
+                    f"Must be in YYYY-MM-DD format."
                 )
 
         if self.batch_number:
@@ -208,12 +210,12 @@ class ValidationResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
-    def add_error(self, message: str):
+    def add_error(self, message: str) -> None:
         """Add validation error."""
         self.errors.append(message)
         self.is_valid = False
 
-    def add_warning(self, message: str):
+    def add_warning(self, message: str) -> None:
         """Add validation warning."""
         self.warnings.append(message)
 
@@ -247,7 +249,7 @@ class InventoryStats:
     product_groups: int = 0
     generation_time: float = 0.0
 
-    def add_host(self, host: Host):
+    def add_host(self, host: Host) -> None:
         """Add a host to the statistics."""
         self.total_hosts += 1
 
@@ -264,7 +266,7 @@ class InventoryStats:
     def get_summary(self) -> str:
         """Get a summary of the statistics."""
         lines = [
-            f"📊 Inventory Statistics:",
+            "📊 Inventory Statistics:",
             f"   Total hosts: {self.total_hosts}",
             f"   Active: {self.active_hosts}",
             f"   Decommissioned: {self.decommissioned_hosts}",

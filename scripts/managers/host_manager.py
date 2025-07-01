@@ -7,37 +7,32 @@ cleanup, and host status management.
 """
 
 import csv
-import os
 import re
 import shutil
-
-# Add scripts directory to path for imports
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Any
+
+from scripts.core import get_logger, CSV_FILE as DEFAULT_CSV_FILE
+from scripts.core.config import PROJECT_ROOT
+from scripts.core.models import InventoryConfig
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from core import CSV_FILE as DEFAULT_CSV_FILE
-from core import get_logger
-from core.config import PROJECT_ROOT
-from core.models import InventoryConfig
-
 
 class HostManager:
     """Manages host lifecycle operations and CSV management."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
-        # Import here to ensure correct path resolution
-        from core import CSV_FILE as DEFAULT_CSV_FILE
-
-        self.csv_file = csv_file if csv_file is not None else DEFAULT_CSV_FILE
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
+        self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.config = InventoryConfig.create_default()
-
+        self.stats = None
         self.logger.info("Host Manager initialized")
         self.logger.info(f"Using CSV source: {self.csv_file}")
 
@@ -124,7 +119,8 @@ class HostManager:
                 host_found = True
 
                 self.logger.info(
-                    f"Decommissioned host {hostname} with date {date}. Reason: {sanitized_reason}"
+                    f"Decommissioned host {hostname} with date {date}. "
+                    f"Reason: {sanitized_reason}"
                 )
                 break
 

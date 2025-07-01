@@ -9,7 +9,7 @@ including location lookup, validation, and legacy identifier conversion.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -23,89 +23,17 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 
-class GeographicManager:
-    """Manages geographic location codes and configurations."""
-
-    def __init__(self, config_path: str = None):
-        """Initialize with optional custom config path."""
-        if config_path is None:
-            # Default to inventory/group_vars/all/geographic_locations.yml
-            base_dir = Path(__file__).parent.parent.parent
-            config_path = (
-                base_dir
-                / "inventory"
-                / "group_vars"
-                / "all"
-                / "geographic_locations.yml"
-            )
-
-        self.config_path = Path(config_path)
-        self.config = self._load_config()
-
-    def _load_config(self) -> Dict:
-        """Load the geographic locations configuration."""
-        try:
-            with open(self.config_path, "r") as f:
-                return yaml.safe_load(f)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Geographic config not found: {self.config_path}")
-        except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in geographic config: {e}")
-
-    def get_standard_code(self, location_identifier: str) -> Optional[str]:
-        """Convert legacy location identifier to standard code."""
-        # Check if it's already a standard code
-        if location_identifier in self.config.get("locations", {}):
-            return location_identifier
-
-        # Check legacy mappings
-        legacy_mappings = self.config.get("legacy_mappings", {})
-        return legacy_mappings.get(location_identifier)
-
-    def get_legacy_identifier(self, standard_code: str) -> Optional[str]:
-        """Get the legacy identifier for a standard code."""
-        location_codes = self.config.get("location_codes", {})
-        if standard_code in location_codes:
-            return location_codes[standard_code].get("current_identifier")
-        return None
-
-    def get_location_info(self, identifier: str) -> Optional[Dict]:
-        """Get full location information for any identifier (standard or legacy)."""
-        standard_code = self.get_standard_code(identifier)
-        if standard_code:
-            locations = self.config.get("locations", {})
-            location_codes = self.config.get("location_codes", {})
-
-            info = locations.get(standard_code, {}).copy()
-            if standard_code in location_codes:
-                info.update(location_codes[standard_code])
-            info["standard_code"] = standard_code
-            return info
-        return None
-
-    def list_all_locations(self) -> List[Dict]:
-        """List all configured locations with their codes."""
-        locations = []
-        for code, info in self.config.get("location_codes", {}).items():
-            location_info = self.get_location_info(code)
-            if location_info:
-                locations.append(location_info)
-        return locations
-
-    def validate_location(self, identifier: str) -> bool:
-        """Validate if a location identifier is known."""
-        return self.get_standard_code(identifier) is not None
-
-
 class GeographicCommand(BaseCommand):
     """Command to manage geographic location codes and validation."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
         self.geo_manager = GeographicManager()
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add geographic-specific arguments to parser."""
         parser.add_argument(
             "action",
@@ -129,7 +57,7 @@ class GeographicCommand(BaseCommand):
             help="Custom path to geographic configuration file",
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the geographic command."""
         try:
             # Initialize with custom config if provided
@@ -160,7 +88,7 @@ class GeographicCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _handle_list(self, args) -> Dict[str, Any]:
+    def _handle_list(self, args: Any) -> Dict[str, Any]:
         """Handle listing all locations."""
         self.logger.info("📍 Listing all geographic locations")
 
@@ -180,7 +108,7 @@ class GeographicCommand(BaseCommand):
             message=f"Found {len(locations)} geographic locations",
         ).to_dict()
 
-    def _handle_lookup(self, args) -> Dict[str, Any]:
+    def _handle_lookup(self, args: Any) -> Dict[str, Any]:
         """Handle looking up a specific location."""
         if not args.location:
             return CommandResult(
@@ -210,7 +138,7 @@ class GeographicCommand(BaseCommand):
                 success=False, error=f"Location '{args.location}' not found"
             ).to_dict()
 
-    def _handle_validate(self, args) -> Dict[str, Any]:
+    def _handle_validate(self, args: Any) -> Dict[str, Any]:
         """Handle validating a location identifier."""
         if not args.location:
             return CommandResult(
@@ -234,7 +162,8 @@ class GeographicCommand(BaseCommand):
 
         if is_valid:
             message = (
-                f"✓ '{args.location}' is valid (maps to standard code: {standard_code})"
+                f"✓ '{args.location}' is valid "
+                f"(maps to standard code: {standard_code})"
             )
         else:
             message = f"✗ '{args.location}' is not a valid location identifier"
@@ -243,7 +172,7 @@ class GeographicCommand(BaseCommand):
             success=is_valid, data=result_data, message=message
         ).to_dict()
 
-    def _handle_convert(self, args) -> Dict[str, Any]:
+    def _handle_convert(self, args: Any) -> Dict[str, Any]:
         """Handle converting between location identifier formats."""
         if not args.location:
             return CommandResult(
@@ -297,20 +226,18 @@ class GeographicCommand(BaseCommand):
     def _format_list_output(self, data: Dict[str, Any], output_format: str) -> str:
         locations = data.get("locations", [])
         total = data.get("total_locations", 0)
-
         if output_format == "json":
-            return json.dumps(locations, indent=2)
+            return str(json.dumps(locations, indent=2))
         elif output_format == "yaml":
-            return yaml.dump(locations, default_flow_style=False)
-        else:  # table format
+            return str(yaml.dump(locations, default_flow_style=False))
+        else:
             lines = [
                 "📍 GEOGRAPHIC LOCATIONS",
-                "Total locations: {}".format(total),
+                f"Total locations: {total}",
                 "",
                 "{'Code':<4} {'Name':<12} {'Country':<15} {'Legacy ID':<20} {'Region'}",
             ]
             lines.append("-" * 70)
-
             for loc in locations:
                 lines.append(
                     "{:<4} {:<12} {:<15} {:<20} {}".format(
@@ -321,25 +248,21 @@ class GeographicCommand(BaseCommand):
                         loc.get("region", ""),
                     )
                 )
-
             return "\n".join(lines)
 
     def _format_lookup_output(self, data: Dict[str, Any], output_format: str) -> str:
         location_info = data.get("location_info", {})
         location_id = data.get("location_identifier", "unknown")
-
         if output_format == "json":
-            return json.dumps(location_info, indent=2)
+            return str(json.dumps(location_info, indent=2))
         elif output_format == "yaml":
-            return yaml.dump({location_id: location_info}, default_flow_style=False)
-        else:  # table format
-            lines = ["📍 Location Information for '{}':".format(location_id)]
+            return str(
+                yaml.dump({location_id: location_info}, default_flow_style=False)
+            )
+        else:
+            lines = [f"📍 Location Information for '{location_id}':"]
             for key, value in location_info.items():
-                if isinstance(value, (list, dict)):
-                    lines.append("  {}: {}".format(key, value))
-                else:
-                    lines.append("  {}: {}".format(key, value))
-
+                lines.append(f"  {key}: {value}")
             return "\n".join(lines)
 
     def _format_validate_output(self, data: Dict[str, Any]) -> str:
@@ -348,7 +271,7 @@ class GeographicCommand(BaseCommand):
         standard_code = data.get("standard_code")
 
         if is_valid:
-            return "✓ '{}' is valid (maps to standard code: {}) ".format(
+            return "✓ '{}' is valid (maps to standard code: {})".format(
                 location_id, standard_code
             )
         else:

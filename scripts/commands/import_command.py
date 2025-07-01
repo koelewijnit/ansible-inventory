@@ -28,14 +28,16 @@ if str(SCRIPT_DIR) not in sys.path:
 class ImportCommand(BaseCommand):
     """Command to import existing Ansible inventories into CSV format."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
-        self.hosts_data = {}
-        self.warnings = []
+        self.hosts_data: Dict[str, Any] = {}
+        self.warnings: List[str] = []
         self.stats = {"hosts_processed": 0, "groups_found": 0, "host_vars_found": 0}
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add import-specific arguments to parser."""
         parser.add_argument(
             "--inventory-file",
@@ -65,7 +67,7 @@ class ImportCommand(BaseCommand):
             help="Generate detailed import report (default: auto-generated name)",
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the import command."""
         try:
             self.logger.info(
@@ -345,7 +347,7 @@ class ImportCommand(BaseCommand):
         """Determine environment from hostname, groups, or variables."""
         # Check variables first
         if "environment" in vars_data:
-            env = vars_data["environment"].lower()
+            env = str(vars_data["environment"]).lower()
             if env in ENVIRONMENTS:
                 return env
 
@@ -382,9 +384,9 @@ class ImportCommand(BaseCommand):
         """Determine location from various sources."""
         # Check variables first
         location = (
-            vars_data.get("location")
-            or vars_data.get("datacenter")
-            or vars_data.get("region", "")
+            str(vars_data.get("location", ""))
+            or str(vars_data.get("datacenter", ""))
+            or str(vars_data.get("region", ""))
         )
         if location:
             return location
@@ -405,11 +407,13 @@ class ImportCommand(BaseCommand):
             (r"eindhoven.*htc|htc", "eindhoven-htc"),
         ]
 
+        # Check hostname patterns
         for pattern, location_code in region_patterns:
             if re.search(pattern, hostname_lower):
                 return location_code
 
-            # Check groups too
+        # Check group patterns
+        for pattern, location_code in region_patterns:
             for group in groups:
                 if re.search(pattern, group.lower()):
                     return location_code
@@ -420,19 +424,17 @@ class ImportCommand(BaseCommand):
         """Match text against patterns to determine mapping."""
         for pattern, mapping in patterns.items():
             if re.search(pattern, text):
-                return mapping
+                return str(mapping)
         return ""
 
     def _extract_instance_number(self, hostname: str) -> str:
         """Extract instance number from hostname."""
         patterns = [r"-(\d+)$", r"_(\d+)$", r"(\d+)$"]
-
         for pattern in patterns:
             match = re.search(pattern, hostname)
             if match:
-                return match.group(1).zfill(2)  # Pad with zero
-
-        return "01"  # Default
+                return str(match.group(1).zfill(2))
+        return "01"
 
     def _determine_batch_number(self, hostname: str) -> str:
         """Determine batch number from hostname."""
@@ -580,7 +582,7 @@ class ImportCommand(BaseCommand):
             stats = data.get("statistics", {})
             lines = [
                 "✅ ANSIBLE INVENTORY IMPORT COMPLETED",
-                f"📊 Statistics:",
+                "📊 Statistics:",
                 f"   Hosts imported: {stats.get('hosts_processed', 0)}",
                 f"   Groups processed: {stats.get('groups_found', 0)}",
                 f"   Host vars processed: {stats.get('host_vars_found', 0)}",

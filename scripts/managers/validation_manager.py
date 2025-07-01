@@ -6,36 +6,36 @@ Handles comprehensive validation of inventory structure, data consistency,
 and health monitoring with scoring and recommendations.
 """
 
+import os
+import shutil
 import subprocess
-
-# Add scripts directory to path for imports
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
+from typing import Optional, Dict, Any, List
 import yaml
+from datetime import datetime, timedelta
+
+from scripts.core import get_logger
+from scripts.core.config import CSV_FILE, HOST_VARS_DIR
+from scripts.managers.inventory_manager import InventoryManager
+from scripts.core.models import InventoryConfig, ValidationResult
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from core import CSV_FILE as DEFAULT_CSV_FILE
-from core import get_logger
-from core.models import Host, InventoryConfig, ValidationResult
-from managers.inventory_manager import InventoryManager
-
 
 class ValidationManager:
     """Manages comprehensive validation operations and health monitoring."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
-        # Import here to ensure correct path resolution
-        from core import CSV_FILE as DEFAULT_CSV_FILE
-
-        self.csv_file = csv_file if csv_file is not None else DEFAULT_CSV_FILE
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
+        self.csv_file: Path = csv_file if csv_file is not None else CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.config = InventoryConfig.create_default()
-        self.inventory_manager = InventoryManager(self.csv_file, logger)
+        self.inventory_manager = InventoryManager(self.csv_file, self.logger)
+        self.env_counts: Dict[str, int] = {}
 
         self.logger.info("Validation Manager initialized")
 
@@ -195,7 +195,7 @@ class ValidationManager:
                 )
 
             # Environment distribution check
-            env_counts = {}
+            env_counts: Dict[str, int] = {}
             for host in hosts:
                 env_counts[host.environment] = env_counts.get(host.environment, 0) + 1
 
@@ -253,8 +253,12 @@ class ValidationManager:
     def _check_ansible(self) -> Optional[str]:
         """Check if Ansible is available."""
         try:
+            # Use absolute path for ansible for security
+            ansible_path = shutil.which("ansible")
+            if not ansible_path:
+                return None
             result = subprocess.run(
-                ["ansible", "--version"], capture_output=True, text=True, timeout=5
+                [ansible_path, "--version"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 return result.stdout.split("\n")[0]

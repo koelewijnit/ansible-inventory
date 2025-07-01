@@ -14,6 +14,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from commands import CommandRegistry
 from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging
@@ -27,7 +28,7 @@ if str(SCRIPT_DIR) not in sys.path:
 class ModularInventoryCLI:
     """Ansible Inventory Management CLI."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = get_logger(__name__)
         self.command_registry = CommandRegistry()
         self.start_time = time.time()
@@ -127,12 +128,13 @@ https://github.com/your-org/inventory-structure
                 command_parser = subparsers.add_parser(command_name)
 
             # Let the command class add its arguments
-            temp_command = command_class()
-            temp_command.add_parser_arguments(command_parser)
+            if command_class:
+                temp_command = command_class()
+                temp_command.add_parser_arguments(command_parser)
 
         return parser
 
-    def execute_command(self, args) -> dict:
+    def execute_command(self, args: Any) -> dict:
         """Execute the specified command with arguments."""
         if not args.command:
             return {
@@ -154,6 +156,8 @@ https://github.com/your-org/inventory-structure
                 execution_time = time.time() - self.start_time
                 result["execution_time"] = round(execution_time, 3)
 
+            if not isinstance(result, dict):
+                return {"success": False, "error": "Command did not return a dict."}
             return result
 
         except ValueError:
@@ -165,7 +169,7 @@ https://github.com/your-org/inventory-structure
             self.logger.error(f"Command execution failed: {e}", exc_info=True)
             return {"success": False, "error": f"An unexpected error occurred: {e}"}
 
-    def format_output(self, result: dict, args) -> str:
+    def format_output(self, result: dict, args: Any) -> str:
         """Format command result for output."""
         if args.json:
             return json.dumps(result, indent=2, default=str)
@@ -176,9 +180,16 @@ https://github.com/your-org/inventory-structure
             try:
                 command = self.command_registry.create_command(command_name)
                 if hasattr(command, "format_text_output"):
-                    return command.format_text_output(result)
-            except Exception:
-                pass  # Fall back to generic formatting
+                    output = command.format_text_output(result)
+                    if not isinstance(output, str):
+                        return str(output)
+                    return output
+            except Exception as e:
+                self.logger.error(
+                    f"Error formatting output for command '{command_name}': {e}",
+                    exc_info=True,
+                )
+                # Fall back to generic formatting
 
         # Generic text formatting
         if result.get("success", False):
@@ -195,7 +206,7 @@ https://github.com/your-org/inventory-structure
             error = result.get("error", "Unknown error")
             return f"❌ {error}"
 
-    def run(self, argv=None):
+    def run(self, argv: Any = None) -> None:
         """Main entry point for the CLI."""
         parser = self.create_parser()
         args = parser.parse_args(argv)
@@ -220,7 +231,7 @@ https://github.com/your-org/inventory-structure
         sys.exit(0 if result.get("success", False) else 1)
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     try:
         cli = ModularInventoryCLI()

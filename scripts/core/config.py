@@ -7,7 +7,7 @@ scripts. Modify values here to change behavior across all scripts.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 # Version information
 VERSION: str = "2.0.0"
@@ -204,6 +204,6 @@ class ErrorMessages:
     VALIDATION_FAILED = "❌ Validation failed: {error}"
 
     @classmethod
-    def format_error(cls, template: str, **kwargs) -> str:
+    def format_error(cls, template: str, **kwargs: Any) -> str:
         """Format error message with parameters."""
         return template.format(**kwargs)

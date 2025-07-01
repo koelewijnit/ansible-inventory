@@ -10,25 +10,28 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-SCRIPT_DIR = Path(__file__).parent.parent.absolute()
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
-
 from core import get_logger
+from core.utils import create_csv_file, get_csv_template
 from managers.validation_manager import ValidationManager
 
 from .base import BaseCommand, CommandResult
+
+SCRIPT_DIR = Path(__file__).parent.parent.absolute()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 
 class ValidateCommand(BaseCommand):
     """Command to validate inventory structure and configuration."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
-        self.validation_manager = ValidationManager(csv_file, logger)
+        self.validation_manager = ValidationManager(csv_file, self.logger)
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add validate-specific arguments to parser."""
         parser.add_argument(
             "--comprehensive",
@@ -60,13 +63,11 @@ class ValidateCommand(BaseCommand):
             help="Overwrite existing file when using --create-csv",
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the validate command."""
         try:
             # Handle CSV creation request
             if args.create_csv:
-                from core.utils import create_csv_file
-                
                 try:
                     create_csv_file(args.create_csv, args.overwrite)
                     return CommandResult(
@@ -82,8 +83,6 @@ class ValidateCommand(BaseCommand):
 
             # Handle template request
             if args.template:
-                from core.utils import get_csv_template
-
                 template = get_csv_template()
                 return CommandResult(
                     success=True,
@@ -174,7 +173,11 @@ class ValidateCommand(BaseCommand):
                 },
             }
 
-            message = f"Validation {'PASSED' if overall_success else 'FAILED'}: {total_errors} errors, {total_warnings} warnings"
+            status_text = "PASSED" if overall_success else "FAILED"
+            message = (
+                f"Validation {status_text}: {total_errors} errors, "
+                f"{total_warnings} warnings"
+            )
 
             return CommandResult(
                 success=overall_success, data=result_data, message=message
@@ -204,7 +207,8 @@ class ValidateCommand(BaseCommand):
                 "3. Run 'ansible-inventory-cli validate' to check your data",
                 "4. Run 'ansible-inventory-cli generate' to create inventory files",
                 "",
-                "💡 Tip: Use 'ansible-inventory-cli validate --template' to see the CSV format",
+                "💡 Tip: Use 'ansible-inventory-cli validate --template' "
+                "to see the CSV format",
             ]
             return "\n".join(lines)
 

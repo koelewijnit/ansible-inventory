@@ -6,7 +6,6 @@ Handles the generation of Ansible inventory files and host_vars
 from CSV data sources.
 """
 
-# Add scripts directory to path for imports
 import sys
 import time
 from collections import defaultdict
@@ -16,11 +15,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-SCRIPT_DIR = Path(__file__).parent.parent.absolute()
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
-
 from core import (
+    CSV_FILE as DEFAULT_CSV_FILE,
     DEFAULT_SUPPORT_GROUP,
     HOST_VARS_HEADER,
     ensure_directory_exists,
@@ -29,16 +25,19 @@ from core import (
 )
 from core.models import Host, InventoryConfig, InventoryStats
 
+SCRIPT_DIR = Path(__file__).parent.parent.absolute()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
 
 class InventoryManager:
     """Manages core inventory operations and file generation."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
-        # Import here to ensure correct path resolution
-        from core import CSV_FILE as DEFAULT_CSV_FILE
-
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         self.config = InventoryConfig.create_default()
-        self.csv_file = csv_file if csv_file is not None else DEFAULT_CSV_FILE
+        self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.stats = InventoryStats()
 
@@ -54,7 +53,7 @@ class InventoryManager:
         csv_data = load_csv_data(
             self.csv_file, required_fields=["hostname", "environment"]
         )
-        hosts = []
+        hosts: List[Host] = []
 
         for row_data in csv_data:
             try:
@@ -81,10 +80,12 @@ class InventoryManager:
         self.logger.info("Starting inventory generation")
 
         all_hosts = self.load_hosts()
-        target_environments = environments or self.config.environments
+        target_environments: List[str] = environments or self.config.environments
 
         for env in target_environments:
-            env_hosts = [h for h in all_hosts if h.environment == env and h.is_active]
+            env_hosts: List[Host] = [
+                h for h in all_hosts if h.environment == env and h.is_active
+            ]
 
             if not env_hosts:
                 self.logger.warning(f"No active hosts found for environment: {env}")
@@ -95,16 +96,18 @@ class InventoryManager:
                 self.create_host_vars(host, host_vars_dir)
 
             # Generate environment inventory
-            inventory = self.build_environment_inventory(env_hosts, env)
+            inventory: Dict[str, Any] = self.build_environment_inventory(env_hosts, env)
             if inventory:
-                output_file = output_dir / f"{env}.yml"
+                output_file: Path = output_dir / f"{env}.yml"
                 self.write_inventory_file(
                     inventory, output_file, f"{env.title()} Environment"
                 )
 
-                host_count = len(inventory.get(env, {}).get("hosts", {}))
-                app_groups = len([g for g in inventory.keys() if g.startswith("app_")])
-                prod_groups = len(
+                host_count: int = len(inventory.get(env, {}).get("hosts", {}))
+                app_groups: int = len(
+                    [g for g in inventory.keys() if g.startswith("app_")]
+                )
+                prod_groups: int = len(
                     [g for g in inventory.keys() if g.startswith("product_")]
                 )
 
@@ -119,7 +122,7 @@ class InventoryManager:
         """Create host_vars file for a host."""
         ensure_directory_exists(str(host_vars_dir))
 
-        host_vars = {
+        host_vars: Dict[str, Any] = {
             "hostname": host.hostname,
             "cname": host.cname or "",
             "environment": host.environment,
@@ -157,7 +160,7 @@ class InventoryManager:
 
         host_vars.update(host.metadata)
 
-        host_vars_file = host_vars_dir / f"{host.hostname}.yml"
+        host_vars_file: Path = host_vars_dir / f"{host.hostname}.yml"
         with host_vars_file.open("w", encoding="utf-8") as f:
             f.write("---\n")
             f.write(f"# Host variables for {host.hostname}\n")
@@ -169,7 +172,7 @@ class InventoryManager:
         self, hosts: List[Host], environment: str
     ) -> Dict[str, Any]:
         """Build inventory dictionary for an environment."""
-        inventory = defaultdict(lambda: {"hosts": {}})
+        inventory: Dict[str, Any] = defaultdict(lambda: {"hosts": {}})
 
         for host in hosts:
             inventory[environment]["hosts"][host.hostname] = None

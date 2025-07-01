@@ -23,12 +23,14 @@ if str(SCRIPT_DIR) not in sys.path:
 class HealthCommand(BaseCommand):
     """Command to perform health monitoring and scoring."""
 
-    def __init__(self, csv_file: Optional[Path] = None, logger=None):
+    def __init__(
+        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> None:
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
-        self.validation_manager = ValidationManager(csv_file, logger)
+        self.validation_manager = ValidationManager(csv_file, self.logger)
 
-    def add_parser_arguments(self, parser):
+    def add_parser_arguments(self, parser: Any) -> None:
         """Add health-specific arguments to parser."""
         parser.add_argument(
             "--detailed", action="store_true", help="Show detailed health information"
@@ -40,7 +42,7 @@ class HealthCommand(BaseCommand):
             help="Health score threshold for warnings (default: 70.0)",
         )
 
-    def execute(self, args) -> Dict[str, Any]:
+    def execute(self, args: Any) -> Dict[str, Any]:
         """Execute the health command."""
         try:
             self.logger.info("🏥 Starting health monitoring")

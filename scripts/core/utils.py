@@ -9,14 +9,14 @@ scripts to eliminate code duplication and ensure consistency.
 import csv
 import logging
 import os
-import subprocess
 import sys
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
+import subprocess
 
 from .models import ValidationResult
 
@@ -96,14 +96,12 @@ def load_csv_data(
         ValueError: If required fields are missing.
     """
     if csv_file is None:
-        csv_file = Path(str(CSV_FILE))
+        csv_file = CSV_FILE
     elif isinstance(csv_file, str):
         csv_file = Path(csv_file)
 
     if not csv_file.exists():
-        from .config import ErrorMessages
-
-        raise FileNotFoundError(ErrorMessages.CSV_NOT_FOUND.format(path=csv_file))
+        raise FileNotFoundError(f"CSV file not found: {csv_file}")
 
     try:
         with csv_file.open("r", encoding="utf-8") as f:
@@ -111,12 +109,12 @@ def load_csv_data(
 
             # Validate required fields
             if required_fields:
-                missing_fields = set(required_fields) - set(reader.fieldnames)
+                missing_fields = set(required_fields) - set(reader.fieldnames or [])
                 if missing_fields:
                     raise ValueError(f"Missing required CSV fields: {missing_fields}")
 
             # Load and filter data
-            hosts = []
+            hosts: List[Dict[str, str]] = []
             for row_num, row in enumerate(
                 reader, start=2
             ):  # Start at 2 (header is row 1)
@@ -136,54 +134,45 @@ def load_csv_data(
         raise ValueError(f"CSV parsing error: {e}")
 
 
-def validate_hostname_decorator(func):
+def validate_hostname_decorator(func: Any) -> Any:
     """Decorator to validate hostname parameter."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         hostname = kwargs.get("hostname") or (args[0] if args else None)
         if not hostname or not hostname.strip():
-            from .config import ErrorMessages
-
             raise ValueError("Hostname is required and cannot be empty")
 
         # Basic hostname validation
         hostname = hostname.strip()
         if len(hostname) > 63:
-            from .config import ErrorMessages
-
-            raise ValueError(ErrorMessages.INVALID_HOSTNAME.format(hostname=hostname))
+            raise ValueError("Hostname too long (max 63 characters)")
 
         if not hostname.replace("-", "").replace("_", "").isalnum():
-            from .config import ErrorMessages
-
-            raise ValueError(ErrorMessages.INVALID_HOSTNAME.format(hostname=hostname))
+            raise ValueError("Hostname contains invalid characters")
 
         return func(*args, **kwargs)
 
     return wrapper
 
 
-def validate_environment_decorator(func):
+def validate_environment_decorator(func: Any) -> Any:
     """Decorator to validate environment parameter."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         environment = kwargs.get("environment")
         if environment and environment not in ENVIRONMENTS:
-            from .config import ErrorMessages
-
             raise ValueError(
-                ErrorMessages.ENVIRONMENT_INVALID.format(
-                    env=environment, valid_envs=", ".join(ENVIRONMENTS)
-                )
+                f"Invalid environment '{environment}'. "
+                f"Must be one of: {', '.join(ENVIRONMENTS)}"
             )
         return func(*args, **kwargs)
 
     return wrapper
 
 
-def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict]:
+def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict[str, str]]:
     """
     Load all hosts from the CSV file.
 
@@ -196,7 +185,7 @@ def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict]:
     if csv_file is None:
         csv_file = str(CSV_FILE)
 
-    hosts = []
+    hosts: List[Dict[str, str]] = []
     if not os.path.exists(csv_file):
         return hosts
 
@@ -215,7 +204,7 @@ def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict]:
 
 def get_hosts_by_environment(
     environment: str, csv_file: Optional[str] = None
-) -> List[Dict]:
+) -> List[Dict[str, str]]:
     """
     Get all hosts for a specific environment.
 
@@ -232,7 +221,9 @@ def get_hosts_by_environment(
     ]
 
 
-def get_hosts_by_status(status: str, csv_file: Optional[str] = None) -> List[Dict]:
+def get_hosts_by_status(
+    status: str, csv_file: Optional[str] = None
+) -> List[Dict[str, str]]:
     """
     Get all hosts with a specific status.
 
@@ -330,7 +321,8 @@ def validate_environment(environment: str) -> Optional[str]:
         Error message if invalid, None if valid
     """
     if environment not in ENVIRONMENTS:
-        return f"Invalid environment '{environment}'. Must be one of: {', '.join(ENVIRONMENTS)}"
+        valid_envs = ", ".join(ENVIRONMENTS)
+        return f"Invalid environment '{environment}'. Must be one of: {valid_envs}"
 
     return None
 
@@ -346,7 +338,8 @@ def validate_status(status: str) -> Optional[str]:
         Error message if invalid, None if valid
     """
     if status not in VALID_STATUS_VALUES:
-        return f"Invalid status '{status}'. Must be one of: {', '.join(VALID_STATUS_VALUES)}"
+        valid_statuses = ", ".join(VALID_STATUS_VALUES)
+        return f"Invalid status '{status}'. Must be one of: {valid_statuses}"
 
     return None
 
@@ -375,23 +368,19 @@ def run_ansible_command(
     args: List[str], cwd: Optional[str] = None
 ) -> Tuple[bool, str, str]:
     """
-    Run an ansible command and return results.
+    Run an Ansible command and capture output.
 
     Args:
-        args: Command arguments
-        cwd: Working directory. If None, uses PROJECT_ROOT.
+        args: List of command arguments (must be trusted input)
+        cwd: Working directory
 
     Returns:
         Tuple of (success, stdout, stderr)
     """
-    if cwd is None:
-        cwd = str(PROJECT_ROOT)
-
     try:
+        # Only trusted input should be passed to subprocess.run
         result = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
         return result.returncode == 0, result.stdout, result.stderr
-    except FileNotFoundError:
-        return False, "", f"Command not found: {args[0]}"
     except Exception as e:
         return False, "", str(e)
 
@@ -440,20 +429,22 @@ def create_backup_file(source_file: str, backup_dir: Optional[str] = None) -> st
     source_path = Path(source_file)
 
     if backup_dir is None:
-        backup_dir = source_path.parent
+        backup_dir_path = source_path.parent
     else:
-        backup_dir = Path(backup_dir)
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_dir_path = Path(backup_dir)
+        backup_dir_path.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime(TIMESTAMP_FORMAT)
     backup_name = f"{source_path.stem}_backup_{timestamp}{source_path.suffix}"
-    backup_path = backup_dir / backup_name
+    backup_path = backup_dir_path / backup_name
 
     shutil.copy2(source_file, backup_path)
     return str(backup_path)
 
 
-def save_yaml_file(data: Dict, file_path: str, header_comment: Optional[str] = None):
+def save_yaml_file(
+    data: Dict, file_path: str, header_comment: Optional[str] = None
+) -> None:
     """
     Save data to a YAML file with optional header comment.
 
@@ -462,10 +453,10 @@ def save_yaml_file(data: Dict, file_path: str, header_comment: Optional[str] = N
         file_path: Path to save file
         header_comment: Optional header comment
     """
-    file_path = Path(file_path)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
+    path_obj = Path(file_path)
+    path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(file_path, "w") as f:
+    with open(path_obj, "w") as f:
         f.write("---\n")
         if header_comment:
             f.write(f"# {header_comment}\n")
@@ -473,7 +464,7 @@ def save_yaml_file(data: Dict, file_path: str, header_comment: Optional[str] = N
         yaml.dump(data, f, default_flow_style=False, sort_keys=True)
 
 
-def load_yaml_file(file_path: str) -> Optional[Dict]:
+def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
     """
     Load data from a YAML file.
 
@@ -485,7 +476,8 @@ def load_yaml_file(file_path: str) -> Optional[Dict]:
     """
     try:
         with open(file_path, "r") as f:
-            return yaml.safe_load(f)
+            data = yaml.safe_load(f)
+            return data if isinstance(data, dict) else None
     except (FileNotFoundError, yaml.YAMLError):
         return None
 
@@ -507,7 +499,7 @@ def format_console_output(title: str, content: List[str], width: int = 60) -> st
     return "\n".join(output)
 
 
-def print_summary_table(headers: List[str], rows: List[List[str]]):
+def print_summary_table(headers: List[str], rows: List[List[str]]) -> None:
     """
     Print a formatted table with headers and rows.
 
@@ -589,13 +581,13 @@ def validate_csv_headers(
             # Check for unexpected headers (warnings)
             unexpected_headers = set(actual_headers) - set(expected_headers)
             if unexpected_headers:
+                unexpected_list = ", ".join(sorted(unexpected_headers))
                 result.add_warning(
-                    f"Unexpected headers (will be ignored): {', '.join(sorted(unexpected_headers))}"
+                    f"Unexpected headers (will be ignored): {unexpected_list}"
                 )
 
             # Check for case-insensitive matches
             actual_lower = {h.lower(): h for h in actual_headers}
-            expected_lower = {h.lower(): h for h in expected_headers}
 
             case_mismatches = []
             for expected in expected_headers:
@@ -665,7 +657,6 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
             reader = csv.DictReader(f)
 
             row_errors = []
-            row_warnings = []
             valid_rows = 0
             total_rows = 0
 
@@ -692,7 +683,8 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
             if row_errors:
                 result.errors.extend(row_errors)
                 result.add_error(
-                    f"CSV validation failed: {len(row_errors)} invalid rows out of {total_rows} total rows"
+                    f"CSV validation failed: {len(row_errors)} invalid rows "
+                    f"out of {total_rows} total rows"
                 )
             else:
                 result.add_warning(
@@ -712,20 +704,27 @@ def get_csv_template() -> str:
     Returns:
         String containing CSV template
     """
-    return """hostname,cname,environment,group_path,application_service,product_id,batch_number,patch_mode,dashboard_group,primary_application,function,location,instance,ssl_port,status,decommission_date
-# Example hosts (remove # to activate):
-# prd-web-use1-01,,production,,web,webapp,1,auto,Web,WebApp,frontend,us-east-1,1,443,active,
-# dev-db-use1-01,,development,,db,postgres,2,manual,DB,Database,backend,us-east-1,2,5432,active,
-# tst-app-use1-01,,test,,app,appsvc,3,auto,API,AppService,api,us-east-1,3,8080,active,
-# acc-mon-use1-01,,acceptance,,monitoring,mon,4,manual,Monitoring,Monitoring,infra,us-east-1,4,9090,active,
+    return (
+        "hostname,cname,environment,group_path,application_service,product_id,"
+        "batch_number,patch_mode,dashboard_group,primary_application,function,"
+        "location,instance,ssl_port,status,decommission_date\n"
+        "# Example hosts (remove # to activate):\n"
+        "# prd-web-use1-01,,production,,web,webapp,1,auto,Web,WebApp,frontend,"
+        "us-east-1,1,443,active,\n"
+        "# dev-db-use1-01,,development,,db,postgres,2,manual,DB,Database,backend,"
+        "us-east-1,2,5432,active,\n"
+        "# tst-app-use1-01,,test,,app,appsvc,3,auto,API,AppService,api,"
+        "us-east-1,3,8080,active,\n"
+        "# acc-mon-use1-01,,acceptance,,monitoring,mon,4,manual,Monitoring,"
+        "Monitoring,infra,us-east-1,4,9090,active,\n\n"
+        "# Required fields: hostname, environment, status\n"
+        "# Optional fields: all others\n"
+        "# Data types: instance and batch_number must be integers\n"
+        "# Status values: active, decommissioned\n"
+        "# Environment values: production, development, test, acceptance\n"
+        "# Patch modes: auto, manual\n"
+    )
 
-# Required fields: hostname, environment, status
-# Optional fields: all others
-# Data types: instance and batch_number must be integers
-# Status values: active, decommissioned
-# Environment values: production, development, test, acceptance
-# Patch modes: auto, manual
-"""
 
 def create_csv_file(file_path: Path, overwrite: bool = False) -> bool:
     """
@@ -741,19 +740,21 @@ def create_csv_file(file_path: Path, overwrite: bool = False) -> bool:
     try:
         # Check if file exists and handle overwrite
         if file_path.exists() and not overwrite:
-            raise FileExistsError(f"File {file_path} already exists. Use --overwrite to replace it.")
-        
+            raise FileExistsError(
+                f"File {file_path} already exists. Use --overwrite to replace it."
+            )
+
         # Create parent directories if they don't exist
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Get template content
         template_content = get_csv_template()
-        
+
         # Write the file
-        with file_path.open('w', encoding='utf-8') as f:
+        with file_path.open("w", encoding="utf-8") as f:
             f.write(template_content)
-        
+
         return True
-        
+
     except Exception as e:
         raise ValueError(f"Failed to create CSV file: {e}")
