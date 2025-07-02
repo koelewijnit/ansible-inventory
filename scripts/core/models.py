@@ -99,9 +99,12 @@ class Host:
                 )
 
         if self.instance:
-            if not re.fullmatch(r"[1-9]\d*", self.instance):
+            # Allow 0 and positive integers without leading zeros
+            if self.instance == "0" or re.fullmatch(r"[1-9]\d*", self.instance):
+                pass  # Valid instance
+            else:
                 raise ValueError(
-                    f"Invalid instance: {self.instance}. Must be a plain integer without leading zeros."
+                    f"Invalid instance: {self.instance}. Must be a positive integer without leading zeros."
                 )
 
         # Clean up string fields
@@ -134,7 +137,7 @@ class Host:
         """Get a list of Ansible tags for this host."""
         if not self.ansible_tags:
             return []
-        return [tag.strip() for tag in self.ansible_tags.split(',') if tag.strip()]
+        return [tag.strip() for tag in self.ansible_tags.split(",") if tag.strip()]
 
     @property
     def is_decommissioned(self) -> bool:
@@ -174,7 +177,7 @@ class Host:
         if not self.product_id:
             return []
         # Split on comma, clean up whitespace, and filter empty strings
-        return [p.strip() for p in self.product_id.split(',') if p.strip()]
+        return [p.strip() for p in self.product_id.split(",") if p.strip()]
 
     def get_product_group_names(self) -> List[str]:
         """Return all product group names for inventory.
@@ -201,14 +204,18 @@ class Host:
             elif self.hostname:
                 return self.hostname
             else:
-                raise ValueError("No valid inventory key found: neither cname nor hostname is available")
+                raise ValueError(
+                    "No valid inventory key found: neither cname nor hostname is available"
+                )
         else:  # key_type == "hostname"
             if self.hostname:
                 return self.hostname
             elif self.cname:
                 return self.cname
             else:
-                raise ValueError("No valid inventory key found: neither hostname nor cname is available")
+                raise ValueError(
+                    "No valid inventory key found: neither hostname nor cname is available"
+                )
 
     def get_host_vars_filename(self, key_type: str = "hostname") -> str:
         """Return the host_vars filename based on the inventory key type."""
@@ -259,8 +266,8 @@ class Host:
             "ansible_tags",
         }
 
-        host_data = {}
-        metadata = {}
+        host_data: Dict[str, Any] = {}
+        metadata: Dict[str, Any] = {}
 
         for k, v in row.items():
             clean_value = v.strip() if v is not None else None
@@ -269,9 +276,9 @@ class Host:
                 if k in ["hostname", "cname"] and not clean_value:
                     host_data[k] = None
                 else:
-                    host_data[k] = clean_value
+                    host_data[k] = clean_value if clean_value is not None else ""
             else:
-                metadata[k] = clean_value
+                metadata[k] = clean_value if clean_value is not None else ""
 
         return cls(**host_data, metadata=metadata)
 

@@ -22,12 +22,16 @@ from managers.validation_manager import ValidationManager  # noqa: E402
 
 from .base import BaseCommand, CommandResult  # noqa: E402
 
+import logging
+
 
 class ValidateCommand(BaseCommand):
     """Command to validate inventory structure and configuration."""
 
+    logger: logging.Logger  # Explicitly declare logger as non-optional
+
     def __init__(
-        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+        self, csv_file: Optional[Path] = None, logger: Optional[logging.Logger] = None
     ) -> None:
         """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)
@@ -93,7 +97,8 @@ class ValidateCommand(BaseCommand):
                     message="CSV template generated",
                 ).to_dict()
 
-            self.logger.info("✅ Starting infrastructure validation")
+            if self.logger:
+                self.logger.info("✅ Starting infrastructure validation")
 
             validation_results = {}
             overall_success = True
@@ -188,7 +193,8 @@ class ValidateCommand(BaseCommand):
 
         except Exception as e:
             error_msg = f"Validation failed: {e}"
-            self.logger.error(error_msg)
+            if self.logger:
+                self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
     def format_text_output(self, result: Dict[str, Any]) -> str:

@@ -21,12 +21,16 @@ from managers.validation_manager import ValidationManager  # noqa: E402
 
 from .base import BaseCommand, CommandResult  # noqa: E402
 
+import logging
+
 
 class HealthCommand(BaseCommand):
     """Command to perform health monitoring and scoring."""
 
+    logger: logging.Logger  # Explicitly declare logger as non-optional
+
     def __init__(
-        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+        self, csv_file: Optional[Path] = None, logger: Optional[logging.Logger] = None
     ) -> None:
         """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)

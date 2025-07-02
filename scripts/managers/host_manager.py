@@ -12,7 +12,7 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Set
 
 
 # Ensure sibling modules are importable when this file is imported outside of
@@ -41,11 +41,16 @@ class HostManager:
         self.logger.info("Host Manager initialized")
         self.logger.info(f"Using CSV source: {self.csv_file}")
 
-    def load_hosts_from_csv_raw(self) -> List[Dict]:
+    def load_hosts_from_csv_raw(self) -> List[Dict[str, Any]]:
         """Load raw host data for lifecycle operations."""
-        hosts = []
+        hosts: List[Dict[str, Any]] = []
         with self.csv_file.open("r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            # Check if CSV has headers
+            if not reader.fieldnames:
+                self.logger.error("CSV file has no headers or is empty")
+                return hosts
+
             for row in reader:
                 hostname = row.get("hostname", "").strip()
                 if hostname and not hostname.startswith("#"):
@@ -65,10 +70,11 @@ class HostManager:
             )
             shutil.copy2(self.csv_file, backup_file)
             self.logger.info(f"Created backup: {backup_file}")
-            # Write empty file
-            with self.csv_file.open("w", newline="", encoding="utf-8") as f:
-                f.write("")
-            return
+            # Don't write empty file - raise an error instead
+            raise ValueError(
+                "Refusing to write empty CSV file. This would delete all inventory data. "
+                "If this is intentional, manually delete the CSV file."
+            )
 
         # Create backup
         backup_dir = PROJECT_ROOT / "backups"
@@ -79,8 +85,32 @@ class HostManager:
         shutil.copy2(self.csv_file, backup_file)
         self.logger.info(f"Created backup: {backup_file}")
 
-        # Write updated CSV
-        fieldnames = hosts[0].keys()
+        # Get original fieldnames from the current CSV to preserve order and any custom fields
+        original_fieldnames: List[str] = []
+        try:
+            with self.csv_file.open("r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                original_fieldnames = (
+                    list(reader.fieldnames) if reader.fieldnames else []
+                )
+        except Exception:
+            pass
+
+        # If no original fieldnames, use the keys from first host
+        fieldnames = (
+            original_fieldnames if original_fieldnames else list(hosts[0].keys())
+        )
+
+        # Ensure all keys from hosts are included
+        all_keys: Set[str] = set()
+        for host in hosts:
+            all_keys.update(host.keys())
+
+        # Add any missing keys to fieldnames
+        for key in all_keys:
+            if key not in fieldnames:
+                fieldnames.append(key)
+
         with self.csv_file.open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -91,53 +121,87 @@ class HostManager:
     def decommission_host(
         self, hostname: str, date: str, reason: str = "", dry_run: bool = False
     ) -> bool:
-        """Mark a host as decommissioned with specified date."""
-        hosts = self.load_hosts_from_csv_raw()
-
-        # Sanitize reason input
-        sanitized_reason = re.sub(r"[^a-zA-Z0-9 _-]", "", reason)
-
-        # Find the host
-        host_found = False
-        for host in hosts:
-            if host.get("hostname") == hostname:
-                if host.get("status") == "decommissioned":
-                    self.logger.warning(f"Host {hostname} is already decommissioned")
-                    return False
-
-                # Validate date format
-                try:
-                    datetime.strptime(date, "%Y-%m-%d")
-                except ValueError:
-                    self.logger.error(f"Invalid date format: {date}. Use YYYY-MM-DD")
-                    return False
-
-                if dry_run:
-                    self.logger.info(
-                        f"[DRY RUN] Would decommission {hostname} with date {date}"
-                    )
-                    return True
-
-                # Update host status
-                host["status"] = "decommissioned"
-                host["decommission_date"] = date
-                host_found = True
-
-                self.logger.info(
-                    f"Decommissioned host {hostname} with date {date}. "
-                    f"Reason: {sanitized_reason}"
-                )
-                break
-
-        if not host_found:
-            self.logger.error(f"Host {hostname} not found in CSV")
+        """Decommission a host with detailed logging and error handling.
+        
+        Args:
+            hostname: Hostname to decommission
+            date: Decommission date in YYYY-MM-DD format
+            reason: Reason for decommissioning
+            dry_run: If True, only show what would be done
+            
+        Returns:
+            True if successful, False otherwise
+            
+        Raises:
+            ValueError: If date format is invalid or in the future
+        """
+        self.logger.info(f"Starting decommission process for {hostname}")
+        
+        # Validate date format
+        try:
+            parsed_date = datetime.strptime(date, "%Y-%m-%d")
+            # Ensure date is not in the future
+            if parsed_date.date() > datetime.now().date():
+                self.logger.warning(f"Decommission date {date} is in the future")
+        except ValueError:
+            self.logger.error(f"Invalid date format: {date}. Use YYYY-MM-DD")
             return False
 
-        # Save changes
-        if not dry_run:
-            self.save_hosts_to_csv(hosts)
+        # Sanitize the reason
+        sanitized_reason = re.sub(r"[^\w\s\-\.]", "", reason)[:100]
+        
+        try:
+            hosts = self.load_hosts_from_csv_raw()
+            host_found = False
 
-        return True
+            for host in hosts:
+                if host.get("hostname", "").strip() == hostname:
+                    host_found = True
+                    
+                    # Check if already decommissioned
+                    if host.get("status", "").strip() == "decommissioned":
+                        self.logger.warning(
+                            f"Host {hostname} is already decommissioned"
+                        )
+                        return False
+
+                    if dry_run:
+                        self.logger.info(
+                            f"[DRY RUN] Would decommission {hostname} on {date}"
+                        )
+                        if sanitized_reason:
+                            self.logger.info(f"[DRY RUN] Reason: {sanitized_reason}")
+                        return True
+
+                    # Update the host status
+                    host["status"] = "decommissioned"
+                    host["decommission_date"] = date
+                    host["notes"] = sanitized_reason
+                    
+                    self.logger.info(
+                        f"Decommissioned host {hostname} with date {date}. "
+                        f"Reason: {sanitized_reason if sanitized_reason else 'No reason provided'}"
+                    )
+                    break
+
+            if not host_found:
+                self.logger.error(f"Host {hostname} not found in inventory")
+                return False
+
+            # Save updated hosts if not dry run and host was found
+            if not dry_run and host_found:
+                try:
+                    self.save_hosts_to_csv(hosts)
+                    self.logger.info(f"Successfully saved updated inventory")
+                except Exception as e:
+                    self.logger.error(f"Failed to save inventory after decommission: {e}")
+                    return False
+
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error during decommission operation: {e}", exc_info=True)
+            return False
 
     def list_expired_hosts(
         self, grace_days_override: Optional[int] = None
@@ -209,8 +273,15 @@ class HostManager:
 
         # Confirm cleanup unless auto-confirm
         if not auto_confirm:
-            response = input(f"Clean up {len(expired_hosts)} expired hosts? [y/N]: ")
-            if response.lower() != "y":
+            try:
+                response = input(
+                    f"Clean up {len(expired_hosts)} expired hosts? [y/N]: "
+                )
+                # Only accept 'y' or 'Y' for confirmation
+                if response.strip().lower() != "y":
+                    self.logger.info("Cleanup cancelled by user")
+                    return 0
+            except (KeyboardInterrupt, EOFError):
                 self.logger.info("Cleanup cancelled by user")
                 return 0
 
@@ -218,12 +289,25 @@ class HostManager:
         cleaned_count = 0
         for host in expired_hosts:
             hostname = host.get("hostname")
+            cname = host.get("cname")
 
-            # Remove host_vars file
-            host_var_file = self.config.host_vars_dir / f"{hostname}.yml"
-            if host_var_file.exists():
-                host_var_file.unlink()
-                self.logger.info(f"Removed host_vars file: {hostname}.yml")
+            # Remove host_vars file (check both hostname and cname)
+            removed_file = False
+
+            # Try hostname-based file first
+            if hostname:
+                host_var_file = self.config.host_vars_dir / f"{hostname}.yml"
+                if host_var_file.exists():
+                    host_var_file.unlink()
+                    self.logger.info(f"Removed host_vars file: {hostname}.yml")
+                    removed_file = True
+
+            # Also check for cname-based file
+            if cname and not removed_file:
+                cname_var_file = self.config.host_vars_dir / f"{cname}.yml"
+                if cname_var_file.exists():
+                    cname_var_file.unlink()
+                    self.logger.info(f"Removed host_vars file: {cname}.yml")
 
             cleaned_count += 1
 

@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+from typing import List
 
 import yaml
 
@@ -8,7 +9,7 @@ from scripts.managers.validation_manager import ValidationManager
 from scripts.core.utils import load_csv_data
 
 
-def create_csv(tmp_path: Path, rows: list[str]) -> Path:
+def create_csv(tmp_path: Path, rows: List[str]) -> Path:
     csv_file = tmp_path / "hosts.csv"
     csv_file.write_text("\n".join(rows))
     return csv_file

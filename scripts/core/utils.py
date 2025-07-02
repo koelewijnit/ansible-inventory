@@ -14,6 +14,7 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+import re
 
 import yaml
 
@@ -65,22 +66,33 @@ def get_logger(name: str) -> logging.Logger:
     return logger
 
 
-def setup_logging(log_level: str = "INFO") -> None:
-    """Set up logging configuration with specified level."""
-    level = getattr(logging, log_level.upper(), logging.INFO)
-
-    # Configure root logger
+def setup_logging(level: str = "INFO") -> None:
+    """Configure logging for the application.
+    
+    Sets up the root logger with appropriate formatting and level.
+    
+    Args:
+        level: Logging level (DEBUG, INFO, WARNING, ERROR)
+    """
+    logger = get_logger(__name__)
+    
+    # Validate log level
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if level.upper() not in valid_levels:
+        logger.warning(f"Invalid log level '{level}', defaulting to INFO")
+        level = "INFO"
+        
     logging.basicConfig(
-        level=level,
-        format="%(levelname)s: %(message)s",
-        force=True,  # Override existing configuration
+        level=getattr(logging, level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    logger.info(f"Logging configured at {level} level")
 
 
 def load_csv_data(
     csv_file: Optional[Path] = None,
     required_fields: Optional[List[str]] = None,
-    inventory_key: str = "hostname"
+    inventory_key: str = "hostname",
 ) -> List[Dict[str, str]]:
     """Load and validate CSV data with comprehensive error handling.
 
@@ -98,7 +110,7 @@ def load_csv_data(
     """
     if csv_file is None:
         csv_file = CSV_FILE
-    elif isinstance(csv_file, str):
+    else:
         csv_file = Path(csv_file)
 
     if not csv_file.exists():
@@ -124,18 +136,15 @@ def load_csv_data(
                 hostname = row.get("hostname", "").strip()
                 cname = row.get("cname", "").strip()
 
-                # Skip comments and empty rows based on inventory key
+                # Skip comments and empty rows
+                # For both hostname and cname modes, we use fallback logic
                 if inventory_key == "cname":
-                    # When using cname as primary key, skip if neither cname nor hostname is provided
                     primary_id = cname or hostname
-                    if not primary_id or primary_id.startswith("#"):
-                        continue
                 else:
-                    # When using hostname as primary key, skip if hostname is empty
-                    # but allow fallback to cname if hostname is not available
                     primary_id = hostname or cname
-                    if not primary_id or primary_id.startswith("#"):
-                        continue
+
+                if not primary_id or primary_id.startswith("#"):
+                    continue
 
                 # Clean up all string values
                 cleaned_row = {k: v.strip() if v else "" for k, v in row.items()}
@@ -193,13 +202,17 @@ def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict[str, str]]:
 
     Returns:
         List of host dictionaries
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+        ValueError: If CSV file cannot be parsed
     """
     if csv_file is None:
         csv_file = str(CSV_FILE)
 
     hosts: List[Dict[str, str]] = []
     if not os.path.exists(csv_file):
-        return hosts
+        raise FileNotFoundError(f"CSV file not found: {csv_file}")
 
     try:
         with open(csv_file, "r") as f:
@@ -209,7 +222,9 @@ def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict[str, str]]:
                 if hostname and not hostname.startswith("#"):
                     hosts.append(row)
     except Exception as e:
-        print(f"Error reading CSV file {csv_file}: {e}")
+        logger = get_logger(__name__)
+        logger.error(f"Error reading CSV file {csv_file}: {e}")
+        raise ValueError(f"Failed to parse CSV file: {e}")
 
     return hosts
 
@@ -225,6 +240,10 @@ def get_hosts_by_environment(
 
     Returns:
         List of host dictionaries for the environment
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+        ValueError: If CSV file cannot be parsed
     """
     all_hosts = load_hosts_from_csv(csv_file)
     return [
@@ -243,6 +262,10 @@ def get_hosts_by_status(
 
     Returns:
         List of host dictionaries with the status
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+        ValueError: If CSV file cannot be parsed
     """
     all_hosts = load_hosts_from_csv(csv_file)
     return [
@@ -260,6 +283,10 @@ def get_hostnames_from_csv(csv_file: Optional[str] = None) -> Set[str]:
 
     Returns:
         Set of hostnames
+
+    Raises:
+        FileNotFoundError: If CSV file doesn't exist
+        ValueError: If CSV file cannot be parsed
     """
     hosts = load_hosts_from_csv(csv_file)
     return {host["hostname"] for host in hosts if host.get("hostname", "").strip()}
@@ -290,34 +317,28 @@ def find_orphaned_host_vars(csv_file: Optional[str] = None) -> Set[str]:
     Returns:
         Set of orphaned hostnames
     """
-    csv_hosts = get_hostnames_from_csv(csv_file)
+    # Get all possible identifiers from CSV (both hostnames and cnames)
+    hosts = load_hosts_from_csv(csv_file)
+    csv_identifiers = set()
+
+    for host in hosts:
+        hostname = host.get("hostname", "").strip()
+        cname = host.get("cname", "").strip()
+
+        if hostname:
+            csv_identifiers.add(hostname)
+        if cname:
+            csv_identifiers.add(cname)
+
+    # Get all host_vars files
     host_vars_files = get_host_vars_files()
-    return host_vars_files - csv_hosts
 
-
-def validate_hostname(hostname: str) -> Optional[str]:
-    """Validate hostname format.
-
-    Args:
-        hostname: Hostname to validate
-
-    Returns:
-        Error message if invalid, None if valid
-    """
-    if not hostname:
-        return "Hostname cannot be empty"
-
-    if len(hostname) > 63:
-        return "Hostname too long (max 63 characters)"
-
-    if not hostname.replace("-", "").replace("_", "").isalnum():
-        return "Hostname contains invalid characters"
-
-    return None
+    # Find orphaned files (files that don't match any CSV identifier)
+    return host_vars_files - csv_identifiers
 
 
 def validate_environment(environment: str) -> Optional[str]:
-    """Validate environment value.
+    """Validate environment value against configured environments.
 
     Args:
         environment: Environment to validate
@@ -325,15 +346,17 @@ def validate_environment(environment: str) -> Optional[str]:
     Returns:
         Error message if invalid, None if valid
     """
+    if not environment:
+        return "Environment cannot be empty"
+        
     if environment not in ENVIRONMENTS:
-        valid_envs = ", ".join(ENVIRONMENTS)
-        return f"Invalid environment '{environment}'. Must be one of: {valid_envs}"
-
+        return f"Invalid environment '{environment}'. Must be one of: {', '.join(ENVIRONMENTS)}"
+        
     return None
 
 
 def validate_status(status: str) -> Optional[str]:
-    """Validate status value.
+    """Validate status value against allowed statuses.
 
     Args:
         status: Status to validate
@@ -341,10 +364,46 @@ def validate_status(status: str) -> Optional[str]:
     Returns:
         Error message if invalid, None if valid
     """
-    if status not in VALID_STATUS_VALUES:
+    if not status:
+        return "Status cannot be empty"
+        
+    # Normalize to lowercase for comparison
+    status_lower = status.lower()
+    valid_statuses_lower = [s.lower() for s in VALID_STATUS_VALUES]
+    
+    if status_lower not in valid_statuses_lower:
         valid_statuses = ", ".join(VALID_STATUS_VALUES)
         return f"Invalid status '{status}'. Must be one of: {valid_statuses}"
 
+    return None
+
+
+def validate_hostname(hostname: str) -> Optional[str]:
+    """Validate hostname format and length.
+
+    Args:
+        hostname: Hostname to validate
+
+    Returns:
+        Error message if invalid, None if valid
+    """
+    if not hostname or not hostname.strip():
+        return "Hostname is required and cannot be empty"
+        
+    hostname = hostname.strip()
+    
+    # Check length
+    if len(hostname) > 63:
+        return f"Hostname too long ({len(hostname)} chars). Maximum is 63 characters"
+    
+    # Check for valid characters (alphanumeric, hyphens, underscores)
+    if not re.match(r'^[a-zA-Z0-9_-]+$', hostname):
+        return "Hostname contains invalid characters. Use only letters, numbers, hyphens, and underscores"
+        
+    # Check if starts/ends with hyphen
+    if hostname.startswith('-') or hostname.endswith('-'):
+        return "Hostname cannot start or end with a hyphen"
+        
     return None
 
 
@@ -370,21 +429,64 @@ def validate_date_format(date_str: str) -> Optional[str]:
 def run_ansible_command(
     args: List[str], cwd: Optional[str] = None
 ) -> Tuple[bool, str, str]:
-    """Run an Ansible command and capture output.
+    """Run an Ansible command safely with comprehensive error handling.
 
     Args:
-        args: List of command arguments (must be trusted input)
-        cwd: Working directory
+        args: List of command arguments (MUST be trusted input only)
+        cwd: Working directory for command execution
 
     Returns:
         Tuple of (success, stdout, stderr)
+        
+    Warning:
+        Only pass trusted, validated input to this function. Command arguments
+        are NOT sanitized and could pose security risks if user input is passed.
     """
+    logger = get_logger(__name__)
+    
+    # Validate arguments
+    if not args or not isinstance(args, list):
+        logger.error("Invalid arguments provided to run_ansible_command")
+        return False, "", "Invalid command arguments"
+    
+    # Log the command being run (but be careful not to log sensitive data)
+    logger.debug(f"Running command: {' '.join(args[:2])}...")  # Only log command and first arg
+    
     try:
-        # Only trusted input should be passed to subprocess.run
-        result = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
-        return result.returncode == 0, result.stdout, result.stderr
+        # Set timeout to prevent hanging
+        result = subprocess.run(
+            args, 
+            cwd=cwd, 
+            capture_output=True, 
+            text=True,
+            timeout=300,  # 5 minute timeout
+            check=False  # Don't raise on non-zero exit
+        )
+        
+        success = result.returncode == 0
+        
+        if not success:
+            logger.warning(
+                f"Command failed with exit code {result.returncode}: "
+                f"{result.stderr[:200]}..."  # Only log first 200 chars of error
+            )
+        else:
+            logger.debug("Command completed successfully")
+            
+        return success, result.stdout, result.stderr
+        
+    except subprocess.TimeoutExpired:
+        error_msg = "Command timed out after 5 minutes"
+        logger.error(error_msg)
+        return False, "", error_msg
+    except OSError as e:
+        error_msg = f"Failed to execute command: {e}"
+        logger.error(error_msg)
+        return False, "", error_msg
     except Exception as e:
-        return False, "", str(e)
+        error_msg = f"Unexpected error running command: {e}"
+        logger.error(error_msg, exc_info=True)
+        return False, "", error_msg
 
 
 def ensure_directory_exists(directory_path: str) -> None:
@@ -451,32 +553,86 @@ def save_yaml_file(
         data: Data to save
         file_path: Path to save file
         header_comment: Optional header comment
+        
+    Raises:
+        OSError: If file cannot be written
+        yaml.YAMLError: If data cannot be serialized to YAML
     """
+    logger = get_logger(__name__)
     path_obj = Path(file_path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(path_obj, "w") as f:
-        f.write("---\n")
-        if header_comment:
-            f.write(f"# {header_comment}\n")
-            f.write("\n")
-        yaml.dump(data, f, default_flow_style=False, sort_keys=True)
+    
+    try:
+        # Create parent directories if needed
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Ensuring directory exists: {path_obj.parent}")
+        
+        # Write YAML file
+        with open(path_obj, "w") as f:
+            f.write("---\n")
+            if header_comment:
+                f.write(f"# {header_comment}\n")
+                f.write("\n")
+            yaml.dump(data, f, default_flow_style=False, sort_keys=True)
+        
+        logger.info(f"Successfully saved YAML file: {file_path}")
+        
+    except OSError as e:
+        logger.error(f"Failed to write YAML file {file_path}: {e}")
+        raise OSError(f"Cannot write to {file_path}: {e}") from e
+    except yaml.YAMLError as e:
+        logger.error(f"Failed to serialize data to YAML: {e}")
+        raise yaml.YAMLError(f"Invalid YAML data: {e}") from e
 
 
 def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
-    """Load data from a YAML file.
+    """Load data from a YAML file with comprehensive error handling.
 
     Args:
         file_path: Path to YAML file
 
     Returns:
-        Loaded data or None if file doesn't exist or can't be read
+        Loaded data as dictionary or None if file doesn't exist or can't be read
+        
+    Note:
+        This function logs errors but doesn't raise exceptions, returning None
+        on any failure for backward compatibility.
     """
+    logger = get_logger(__name__)
+    
     try:
-        with open(file_path, "r") as f:
+        path_obj = Path(file_path)
+        
+        # Check if file exists
+        if not path_obj.exists():
+            logger.debug(f"YAML file does not exist: {file_path}")
+            return None
+            
+        # Try to read and parse the file
+        with open(path_obj, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-            return data if isinstance(data, dict) else None
-    except (FileNotFoundError, yaml.YAMLError):
+            
+            # Ensure we return a dict or None
+            if data is None:
+                logger.debug(f"YAML file is empty: {file_path}")
+                return None
+            elif not isinstance(data, dict):
+                logger.warning(
+                    f"YAML file {file_path} does not contain a dictionary, "
+                    f"got {type(data).__name__}"
+                )
+                return None
+                
+            logger.debug(f"Successfully loaded YAML file: {file_path}")
+            return data
+            
+    except yaml.YAMLError as e:
+        logger.error(f"YAML parsing error in {file_path}: {e}")
+        return None
+    except OSError as e:
+        logger.error(f"Cannot read file {file_path}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error loading {file_path}: {e}", exc_info=True)
         return None
 
 
@@ -689,7 +845,12 @@ def get_csv_template() -> str:
     Returns:
         String containing CSV template
     """
-    from .config import get_csv_template_headers, ENVIRONMENTS, VALID_STATUS_VALUES, VALID_PATCH_MODES
+    from .config import (
+        get_csv_template_headers,
+        ENVIRONMENTS,
+        VALID_STATUS_VALUES,
+        VALID_PATCH_MODES,
+    )
 
     headers = get_csv_template_headers()
     header_line = ",".join(headers)

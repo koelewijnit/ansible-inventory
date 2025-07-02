@@ -13,7 +13,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 # Add current directory to path for imports before local imports
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -21,11 +21,22 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from commands.base import BaseCommand  # noqa: E402
-from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging  # noqa: E402
+from core import (
+    CSV_FILE,
+    LOG_LEVEL,
+    VERSION,
+    get_logger,
+    setup_logging,
+    PROJECT_ROOT,
+)  # noqa: E402
 
 
 class CommandRegistry:
-    """Registry for all available CLI commands."""
+    """Registry for all available CLI commands.
+    
+    This registry automatically discovers and manages all available commands,
+    providing a centralized location for command registration and instantiation.
+    """
 
     def __init__(self) -> None:
         """Initialise the registry with built-in commands."""
@@ -33,37 +44,98 @@ class CommandRegistry:
         self._register_commands()
 
     def _register_commands(self) -> None:
-        """Auto-discover and register all commands."""
-        from commands.generate_command import GenerateCommand
-        from commands.health_command import HealthCommand
-        from commands.lifecycle_command import LifecycleCommand
-        from commands.validate_command import ValidateCommand
+        """Auto-discover and register all commands.
+        
+        This method imports and registers all built-in commands.
+        Commands should follow the naming convention: {name}Command
+        """
+        try:
+            from commands.generate_command import GenerateCommand
+            from commands.health_command import HealthCommand
+            from commands.lifecycle_command import LifecycleCommand
+            from commands.validate_command import ValidateCommand
 
-        self.register("generate", GenerateCommand)
-        self.register("health", HealthCommand)
-        self.register("validate", ValidateCommand)
-        self.register("lifecycle", LifecycleCommand)
+            self.register("generate", GenerateCommand)
+            self.register("health", HealthCommand)
+            self.register("validate", ValidateCommand)
+            self.register("lifecycle", LifecycleCommand)
+            
+        except ImportError as e:
+            raise ImportError(f"Failed to import command modules: {e}") from e
 
     def register(self, name: str, command_class: Any) -> None:
-        """Register a new command."""
+        """Register a new command with validation.
+        
+        Args:
+            name: Command name (used in CLI)
+            command_class: Class that implements BaseCommand interface
+            
+        Raises:
+            ValueError: If command name is invalid or already registered
+        """
+        if not name or not isinstance(name, str):
+            raise ValueError("Command name must be a non-empty string")
+            
+        if name in self._commands:
+            raise ValueError(f"Command '{name}' is already registered")
+            
+        # Validate that command_class is a proper command
+        if not hasattr(command_class, 'execute') or not hasattr(command_class, 'add_parser_arguments'):
+            raise ValueError(
+                f"Command class '{command_class.__name__}' must implement "
+                "BaseCommand interface (execute and add_parser_arguments methods)"
+            )
+            
         self._commands[name] = command_class
 
     def get_command_class(self, name: str) -> Any:
-        """Get the class for a registered command."""
+        """Get the class for a registered command.
+        
+        Args:
+            name: Command name
+            
+        Returns:
+            Command class
+            
+        Raises:
+            ValueError: If command is not registered
+        """
         if name not in self._commands:
-            raise ValueError(f"Unknown command: {name}")
+            available = ", ".join(sorted(self._commands.keys()))
+            raise ValueError(
+                f"Unknown command: '{name}'. Available commands: {available}"
+            )
         return self._commands[name]
+
+    def get_available_commands(self) -> List[str]:
+        """Get list of all registered command names.
+        
+        Returns:
+            Sorted list of command names
+        """
+        return sorted(self._commands.keys())
 
     def create_command(
         self, name: str, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> BaseCommand:
-        """Create an instance of a registered command."""
-        command_class = self.get_command_class(name)
-        return command_class(csv_file=csv_file, logger=logger)
-
-    def get_available_commands(self) -> list[str]:
-        """Get a list of all registered command names."""
-        return sorted(self._commands.keys())
+        """Create a command instance with the given parameters.
+        
+        Args:
+            name: Command name
+            csv_file: Optional CSV file path
+            logger: Optional logger instance
+            
+        Returns:
+            Instantiated command object
+            
+        Raises:
+            ValueError: If command creation fails
+        """
+        try:
+            command_class = self.get_command_class(name)
+            return command_class(csv_file, logger)
+        except Exception as e:
+            raise ValueError(f"Failed to create command '{name}': {e}") from e
 
 
 class ModularInventoryCLI:
@@ -108,7 +180,7 @@ https://github.com/your-org/inventory-structure
         )
         parser.add_argument(
             "--csv-file",
-            type=Path,
+            type=self._validate_csv_path,
             default=CSV_FILE,
             help=f"CSV source file (default: {CSV_FILE})",
         )
@@ -261,6 +333,46 @@ https://github.com/your-org/inventory-structure
 
         # Exit with appropriate code
         sys.exit(0 if result.get("success", False) else 1)
+
+    def _validate_csv_path(self, path_str: str) -> Path:
+        """Validate the CSV file path to ensure it doesn't escape the project boundaries."""
+        path = Path(path_str)
+
+        # Convert to absolute path for comparison
+        if not path.is_absolute():
+            path = Path.cwd() / path
+
+        # Get the absolute project root path
+        project_root_abs = PROJECT_ROOT.resolve()
+
+        try:
+            # Resolve the path to handle any .. or symlinks
+            path_abs = path.resolve()
+
+            # Check if the path is within the project root
+            path_abs.relative_to(project_root_abs)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"CSV file path must be within the project directory: {path_str}"
+            )
+
+        # Check if file exists
+        if not path_abs.exists():
+            raise argparse.ArgumentTypeError(f"CSV file does not exist: {path_str}")
+
+        # Check if it's a regular file
+        if not path_abs.is_file():
+            raise argparse.ArgumentTypeError(
+                f"CSV file must be a regular file: {path_str}"
+            )
+
+        # Check if it's a CSV file
+        if not path_abs.suffix.lower() == ".csv":
+            raise argparse.ArgumentTypeError(
+                f"File must have .csv extension: {path_str}"
+            )
+
+        return path_abs
 
 
 def main() -> None:

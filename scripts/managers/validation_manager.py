@@ -104,21 +104,32 @@ class ValidationManager:
 
         # Load hosts and find orphaned files
         hosts = self.inventory_manager.load_hosts()
-        csv_hostnames = {host.hostname for host in hosts}
+        csv_identifiers = set()
+
+        # Collect all possible identifiers (both hostnames and cnames)
+        for host in hosts:
+            if host.hostname:
+                csv_identifiers.add(host.hostname)
+            if host.cname:
+                csv_identifiers.add(host.cname)
 
         orphaned_host_vars = []
         if self.config.host_vars_dir.exists():
             for file_path in self.config.host_vars_dir.glob("*.yml"):
-                hostname = file_path.stem
-                if hostname not in csv_hostnames:
-                    orphaned_host_vars.append(hostname)
+                identifier = file_path.stem
+                if identifier not in csv_identifiers:
+                    orphaned_host_vars.append(identifier)
 
         missing_host_vars = []
         active_hosts = [h for h in hosts if h.is_active]
         for host in active_hosts:
-            host_var_file = self.config.host_vars_dir / f"{host.hostname}.yml"
+            # Check for host_vars file using the inventory key
+            inventory_key_value = host.get_inventory_key_value(
+                self.inventory_manager.config.inventory_key
+            )
+            host_var_file = self.config.host_vars_dir / f"{inventory_key_value}.yml"
             if not host_var_file.exists():
-                missing_host_vars.append(host.hostname)
+                missing_host_vars.append(inventory_key_value)
 
         # Calculate health score
         total_active = len(active_hosts)
@@ -199,8 +210,14 @@ class ValidationManager:
 
             # Environment distribution check
             env_counts: Dict[str, int] = {}
+            # Initialize all configured environments with 0
+            for env in self.config.environments:
+                env_counts[env] = 0
+
+            # Count hosts per environment
             for host in hosts:
-                env_counts[host.environment] = env_counts.get(host.environment, 0) + 1
+                if host.environment in env_counts:
+                    env_counts[host.environment] += 1
 
             for env, count in env_counts.items():
                 if count == 0:
@@ -221,24 +238,35 @@ class ValidationManager:
 
         try:
             hosts = self.inventory_manager.load_hosts()
-            csv_hostnames = {host.hostname for host in hosts}
+            csv_identifiers = set()
+
+            # Collect all possible identifiers (both hostnames and cnames)
+            for host in hosts:
+                if host.hostname:
+                    csv_identifiers.add(host.hostname)
+                if host.cname:
+                    csv_identifiers.add(host.cname)
 
             # Check for orphaned host_vars files
             if self.config.host_vars_dir.exists():
                 for file_path in self.config.host_vars_dir.glob("*.yml"):
-                    hostname = file_path.stem
-                    if hostname not in csv_hostnames:
+                    identifier = file_path.stem
+                    if identifier not in csv_identifiers:
                         validation.add_warning(
-                            f"Orphaned host_vars file: {hostname}.yml"
+                            f"Orphaned host_vars file: {identifier}.yml"
                         )
 
             # Check for missing host_vars files
             active_hosts = [h for h in hosts if h.is_active]
             for host in active_hosts:
-                host_var_file = self.config.host_vars_dir / f"{host.hostname}.yml"
+                # Check using the inventory key
+                inventory_key_value = host.get_inventory_key_value(
+                    self.inventory_manager.config.inventory_key
+                )
+                host_var_file = self.config.host_vars_dir / f"{inventory_key_value}.yml"
                 if not host_var_file.exists():
                     validation.add_warning(
-                        f"Missing host_vars file: {host.hostname}.yml"
+                        f"Missing host_vars file: {inventory_key_value}.yml"
                     )
                 else:
                     # Validate YAML syntax
@@ -246,7 +274,9 @@ class ValidationManager:
                         with host_var_file.open("r", encoding="utf-8") as f:
                             yaml.safe_load(f)
                     except yaml.YAMLError as e:
-                        validation.add_error(f"YAML error in {host.hostname}.yml: {e}")
+                        validation.add_error(
+                            f"YAML error in {inventory_key_value}.yml: {e}"
+                        )
 
         except Exception as e:
             validation.add_error(f"Host vars validation failed: {e}")
@@ -254,20 +284,48 @@ class ValidationManager:
         return validation
 
     def _check_ansible(self) -> Optional[str]:
-        """Check if Ansible is available."""
+        """Check if Ansible is available and get version.
+        
+        Returns:
+            Ansible version string or None if not available
+        """
         try:
             # Use absolute path for ansible for security
             ansible_path = shutil.which("ansible")
             if not ansible_path:
+                self.logger.debug("Ansible not found in PATH")
                 return None
+                
+            # Run ansible --version with timeout
             result = subprocess.run(
-                [ansible_path, "--version"], capture_output=True, text=True, timeout=5
+                [ansible_path, "--version"], 
+                capture_output=True, 
+                text=True, 
+                timeout=5,
+                check=False
             )
+            
             if result.returncode == 0:
-                return result.stdout.split("\n")[0]
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-        return None
+                # Extract version from first line
+                version_line = result.stdout.split("\n")[0] if result.stdout else ""
+                self.logger.debug(f"Found Ansible: {version_line}")
+                return version_line
+            else:
+                self.logger.warning(
+                    f"Ansible check failed with exit code {result.returncode}: "
+                    f"{result.stderr[:100]}"
+                )
+                return None
+                
+        except subprocess.TimeoutExpired:
+            self.logger.warning("Ansible version check timed out")
+            return None
+        except OSError as e:
+            self.logger.debug(f"Could not check Ansible version: {e}")
+            return None
+        except Exception as e:
+            self.logger.warning(f"Unexpected error checking Ansible: {e}")
+            return None
 
     def _generate_health_recommendations(
         self, score: float, orphaned: int, missing: int

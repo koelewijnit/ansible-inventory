@@ -88,53 +88,87 @@ class InventoryManager:
         return hosts
 
     def generate_inventories(
-        self,
-        output_dir: Path,
-        host_vars_dir: Path,
-        environments: Optional[List[str]] = None,
-    ) -> InventoryStats:
-        """Generate inventory files and host_vars."""
-        start_time = time.time()
+        self, environments: Optional[List[str]] = None, dry_run: bool = False
+    ) -> Dict[str, Any]:
+        """Generate inventory files for specified environments.
+        
+        Args:
+            environments: List of environments to generate (None for all)
+            dry_run: If True, only show what would be generated
+            
+        Returns:
+            Dictionary with generation results and statistics
+            
+        Raises:
+            FileNotFoundError: If CSV source file doesn't exist
+            ValueError: If no valid hosts found
+        """
         self.logger.info("Starting inventory generation")
+        start_time = time.time()
 
-        all_hosts = self.load_hosts()
-        target_environments: List[str] = environments or self.config.environments
+        # Reset statistics
+        self.stats = InventoryStats()
 
-        for env in target_environments:
-            env_hosts: List[Host] = [
-                h for h in all_hosts if h.environment == env and h.is_active
-            ]
+        try:
+            # Load and validate hosts
+            hosts = self.load_hosts()
+            if not hosts:
+                raise ValueError("No valid hosts found in CSV file")
+                
+            self.logger.info(f"Loaded {len(hosts)} hosts from CSV")
 
-            if not env_hosts:
-                self.logger.warning(f"No active hosts found for environment: {env}")
-                continue
+            # Filter environments if specified
+            target_environments = environments or self.config.environments
 
-            # Generate host_vars
-            for host in env_hosts:
-                self.create_host_vars(host, host_vars_dir)
+            # Generate inventories for each environment
+            generated_files = []
+            
+            for env in target_environments:
+                try:
+                    self.logger.info(f"Processing environment: {env}")
+                    env_hosts = [h for h in hosts if h.environment == env]
+                    
+                    if not env_hosts:
+                        self.logger.warning(f"No hosts found for environment: {env}")
+                        continue
 
-            # Generate environment inventory
-            inventory: Dict[str, Any] = self.build_environment_inventory(env_hosts, env)
-            if inventory:
-                output_file: Path = output_dir / f"{env}.yml"
-                self.write_inventory_file(
-                    inventory, output_file, f"{env.title()} Environment"
-                )
+                    if dry_run:
+                        self.logger.info(
+                            f"[DRY RUN] Would generate inventory for {env} "
+                            f"with {len(env_hosts)} hosts"
+                        )
+                    else:
+                        # Generate the actual inventory file
+                        inventory_file = self._generate_inventory_file(env, env_hosts)
+                        generated_files.append(str(inventory_file))
+                        self.logger.info(
+                            f"Generated inventory file: {inventory_file}"
+                        )
+                        
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to generate inventory for {env}: {e}",
+                        exc_info=True
+                    )
+                    # Continue with other environments
+                    continue
 
-                host_count: int = len(inventory.get(env, {}).get("hosts", {}))
-                app_groups: int = len(
-                    [g for g in inventory.keys() if g.startswith("app_")]
-                )
-                prod_groups: int = len(
-                    [g for g in inventory.keys() if g.startswith("product_")]
-                )
+            # Calculate generation time
+            self.stats.generation_time = time.time() - start_time
 
-                self.logger.info(
-                    f"✅ {env}: {host_count} hosts, {app_groups} app groups, {prod_groups} product groups"
-                )
-
-        self.stats.generation_time = time.time() - start_time
-        return self.stats
+            return {
+                "generated_files": generated_files,
+                "dry_run": dry_run,
+                "stats": self.stats.__dict__,
+                "environments": target_environments,
+            }
+            
+        except FileNotFoundError as e:
+            self.logger.error(f"CSV source file not found: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Inventory generation failed: {e}", exc_info=True)
+            raise ValueError(f"Failed to generate inventories: {e}") from e
 
     def create_host_vars(self, host: Host, host_vars_dir: Path) -> None:
         """Create host_vars file for a host."""
@@ -219,10 +253,11 @@ class InventoryManager:
 
             # Add site_code group if available
             if host.site_code:
-                site_group = (
-                    f"site_{host.site_code.lower().replace('-', '_')}"
-                )
-                inventory[site_group]["hosts"][host_key] = None
+                # Ensure site_code is a string and handle any edge cases
+                site_code_str = str(host.site_code).strip()
+                if site_code_str:
+                    site_group = f"site_{site_code_str.lower().replace('-', '_')}"
+                    inventory[site_group]["hosts"][host_key] = None
 
         return dict(inventory)
 
@@ -241,6 +276,61 @@ class InventoryManager:
             f.write(f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("\n")
             yaml.dump(inventory, f, default_flow_style=False, sort_keys=True)
+
+    def _generate_inventory_file(self, environment: str, hosts: List[Host]) -> Path:
+        """Generate inventory file for a specific environment.
+        
+        Args:
+            environment: Environment name
+            hosts: List of hosts for this environment
+            
+        Returns:
+            Path to generated inventory file
+            
+        Raises:
+            OSError: If file cannot be written
+        """
+        try:
+            # Create host_vars for all active hosts
+            active_hosts = [h for h in hosts if h.is_active]
+            for host in active_hosts:
+                self.create_host_vars(host, self.config.host_vars_dir)
+                
+            # Build inventory structure
+            inventory = self.build_environment_inventory(active_hosts, environment)
+            
+            # Update statistics
+            self.stats.application_groups = len(
+                [g for g in inventory.keys() if g.startswith("app_")]
+            )
+            self.stats.product_groups = len(
+                [g for g in inventory.keys() if g.startswith("product_")]
+            )
+            
+            # Write inventory file
+            output_file = self.config.inventory_dir / f"{environment}.yml"
+            self.write_inventory_file(
+                inventory, output_file, f"{environment.title()} Environment"
+            )
+            
+            self.logger.info(
+                f"Generated {environment} inventory: "
+                f"{len(active_hosts)} hosts, "
+                f"{self.stats.application_groups} app groups, "
+                f"{self.stats.product_groups} product groups"
+            )
+            
+            return output_file
+            
+        except OSError as e:
+            self.logger.error(f"Failed to write inventory file for {environment}: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(
+                f"Unexpected error generating inventory for {environment}: {e}",
+                exc_info=True
+            )
+            raise ValueError(f"Failed to generate {environment} inventory: {e}") from e
 
     def get_stats(self) -> InventoryStats:
         """Get current inventory statistics."""
