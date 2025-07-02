@@ -20,7 +20,7 @@ nano inventory_source/hosts.csv
 Add a new row with your system details. Here's the format:
 
 ```csv
-hostname,environment,status,cname,instance,datacenter,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
+hostname,environment,status,cname,instance,site_code,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
 your-new-server,production,active,,1,us-east-1,443,web,webapp,WebApp,frontend,1,auto,Web,
 ```
 
@@ -182,7 +182,7 @@ python scripts/ansible_inventory_cli.py validate --help
 | `status` | ✅ | `active` | Server status |
 | `cname` | ❌ | `web.example.com` | DNS alias |
 | `instance` | ❌ | `1` | Instance number |
-| `datacenter` | ❌ | `us-east-1` | Datacenter/geographic location |
+| `site_code` | ❌ | `us-east-1` | Site code/geographic location |
 | `ssl_port` | ❌ | `443` | SSL port number |
 | `application_service` | ❌ | `web` | Service type |
 | `product_id` | ❌ | `webapp` | Product identifier |

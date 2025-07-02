@@ -681,7 +681,7 @@ def get_csv_template() -> str:
     Headers are loaded from configuration and organized logically:
     - Required fields first (hostname, environment, status)
     - Identity fields (cname, instance)
-    - Infrastructure fields (datacenter, ssl_port)
+    - Infrastructure fields (site_code, ssl_port)
     - Application fields (application_service, product_id, primary_application, function)
     - Operational fields (batch_number, patch_mode, dashboard_group)
     - Lifecycle fields (decommission_date)
