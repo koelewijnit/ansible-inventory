@@ -158,4 +158,5 @@ features:
   patch_management: true
   lifecycle_management: true
   backup_on_generate: false
-  strict_validation: false 
+  strict_validation: false
+  cleanup_orphaned_on_generate: true  # Auto-remove orphaned host_vars files during generation 

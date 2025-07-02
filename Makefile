@@ -143,6 +143,26 @@ ansible-check: ## Check Ansible playbook syntax
 	ansible-config dump --only-changed
 	@echo "Ansible check complete! ✅"
 
+generate: ## Generate inventory from CSV (auto-cleans orphaned files)
+	@echo "Generating inventory from CSV..."
+	@echo "Note: Orphaned host_vars files will be automatically cleaned up"
+	python scripts/ansible_inventory_cli.py generate
+	@echo "Inventory generation complete! ✅"
+
+generate-fresh: ## Remove ALL host_vars and regenerate from CSV (DESTRUCTIVE)
+	@echo "⚠️  WARNING: This will remove ALL host_vars files and regenerate from CSV"
+	@read -p "Are you sure? [y/N]: " confirm && [ "$$confirm" = "y" ] || exit 1
+	@echo "Removing all host_vars files..."
+	rm -rf inventory/host_vars/*
+	@echo "Generating fresh inventory from CSV..."
+	python scripts/ansible_inventory_cli.py generate
+	@echo "Fresh inventory generation complete! ✅"
+
+generate-dry-run: ## Generate inventory from CSV (dry run)
+	@echo "Generating inventory from CSV (dry run)..."
+	python scripts/ansible_inventory_cli.py generate --dry-run
+	@echo "Dry run complete! ✅"
+
 inventory-stats: ## Show inventory statistics
 	@echo "Inventory Statistics:"
 	@echo "===================="

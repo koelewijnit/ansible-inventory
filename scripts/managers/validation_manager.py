@@ -285,7 +285,7 @@ class ValidationManager:
 
     def _check_ansible(self) -> Optional[str]:
         """Check if Ansible is available and get version.
-        
+
         Returns:
             Ansible version string or None if not available
         """
@@ -295,16 +295,16 @@ class ValidationManager:
             if not ansible_path:
                 self.logger.debug("Ansible not found in PATH")
                 return None
-                
+
             # Run ansible --version with timeout
             result = subprocess.run(
-                [ansible_path, "--version"], 
-                capture_output=True, 
-                text=True, 
+                [ansible_path, "--version"],
+                capture_output=True,
+                text=True,
                 timeout=5,
-                check=False
+                check=False,
             )
-            
+
             if result.returncode == 0:
                 # Extract version from first line
                 version_line = result.stdout.split("\n")[0] if result.stdout else ""
@@ -316,7 +316,7 @@ class ValidationManager:
                     f"{result.stderr[:100]}"
                 )
                 return None
-                
+
         except subprocess.TimeoutExpired:
             self.logger.warning("Ansible version check timed out")
             return None

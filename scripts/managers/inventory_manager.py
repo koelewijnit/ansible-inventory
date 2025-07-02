@@ -11,7 +11,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, NoReturn
 
 import yaml
 
@@ -31,6 +31,7 @@ from core import (  # noqa: E402
     load_csv_data,
 )  # noqa: E402
 from core.models import Host, InventoryConfig, InventoryStats  # noqa: E402
+from core.config import load_config  # noqa: E402
 
 
 class InventoryManager:
@@ -87,18 +88,80 @@ class InventoryManager:
         self.logger.info(f"Loaded {len(hosts)} hosts from CSV")
         return hosts
 
+    def cleanup_orphaned_host_vars(
+        self, hosts: List[Host], dry_run: bool = False
+    ) -> int:
+        """Clean up orphaned host_vars files that don't exist in the current CSV.
+
+        Args:
+            hosts: Current list of hosts from CSV
+            dry_run: If True, only report what would be removed
+
+        Returns:
+            Number of files removed (or would be removed in dry-run)
+        """
+        # Check if cleanup is enabled in config
+        config = load_config()
+        if not config.get("features", {}).get("cleanup_orphaned_on_generate", True):
+            self.logger.debug("Orphaned file cleanup is disabled in configuration")
+            return 0
+
+        # Collect all valid identifiers (both hostnames and cnames)
+        valid_identifiers = set()
+        for host in hosts:
+            if host.hostname:
+                valid_identifiers.add(host.hostname)
+            if host.cname:
+                valid_identifiers.add(host.cname)
+
+        # Find orphaned files
+        orphaned_files = []
+        if self.config.host_vars_dir.exists():
+            for file_path in self.config.host_vars_dir.glob("*.yml"):
+                identifier = file_path.stem
+                if identifier not in valid_identifiers:
+                    orphaned_files.append(file_path)
+
+        if not orphaned_files:
+            return 0
+
+        self.logger.info(f"Found {len(orphaned_files)} orphaned host_vars files")
+
+        if dry_run:
+            self.logger.info("[DRY RUN] Would remove orphaned files:")
+            for file_path in orphaned_files[:5]:  # Show first 5
+                self.logger.info(f"  - {file_path.name}")
+            if len(orphaned_files) > 5:
+                self.logger.info(f"  ... and {len(orphaned_files) - 5} more")
+            return len(orphaned_files)
+
+        # Remove orphaned files
+        removed_count = 0
+        for file_path in orphaned_files:
+            try:
+                file_path.unlink()
+                self.logger.debug(f"Removed orphaned file: {file_path.name}")
+                removed_count += 1
+            except Exception as e:
+                self.logger.error(f"Failed to remove {file_path}: {e}")
+
+        if removed_count > 0:
+            self.logger.info(f"Cleaned up {removed_count} orphaned host_vars files")
+
+        return removed_count
+
     def generate_inventories(
         self, environments: Optional[List[str]] = None, dry_run: bool = False
     ) -> Dict[str, Any]:
         """Generate inventory files for specified environments.
-        
+
         Args:
             environments: List of environments to generate (None for all)
             dry_run: If True, only show what would be generated
-            
+
         Returns:
             Dictionary with generation results and statistics
-            
+
         Raises:
             FileNotFoundError: If CSV source file doesn't exist
             ValueError: If no valid hosts found
@@ -114,20 +177,23 @@ class InventoryManager:
             hosts = self.load_hosts()
             if not hosts:
                 raise ValueError("No valid hosts found in CSV file")
-                
+
             self.logger.info(f"Loaded {len(hosts)} hosts from CSV")
+
+            # Clean up orphaned host_vars files before generating new ones
+            orphaned_count = self.cleanup_orphaned_host_vars(hosts, dry_run)
 
             # Filter environments if specified
             target_environments = environments or self.config.environments
 
             # Generate inventories for each environment
             generated_files = []
-            
+
             for env in target_environments:
                 try:
                     self.logger.info(f"Processing environment: {env}")
                     env_hosts = [h for h in hosts if h.environment == env]
-                    
+
                     if not env_hosts:
                         self.logger.warning(f"No hosts found for environment: {env}")
                         continue
@@ -141,14 +207,11 @@ class InventoryManager:
                         # Generate the actual inventory file
                         inventory_file = self._generate_inventory_file(env, env_hosts)
                         generated_files.append(str(inventory_file))
-                        self.logger.info(
-                            f"Generated inventory file: {inventory_file}"
-                        )
-                        
+                        self.logger.info(f"Generated inventory file: {inventory_file}")
+
                 except Exception as e:
                     self.logger.error(
-                        f"Failed to generate inventory for {env}: {e}",
-                        exc_info=True
+                        f"Failed to generate inventory for {env}: {e}", exc_info=True
                     )
                     # Continue with other environments
                     continue
@@ -156,13 +219,17 @@ class InventoryManager:
             # Calculate generation time
             self.stats.generation_time = time.time() - start_time
 
+            # Add orphaned count to stats
+            self.stats.orphaned_files_removed = orphaned_count
+
             return {
                 "generated_files": generated_files,
                 "dry_run": dry_run,
                 "stats": self.stats.__dict__,
                 "environments": target_environments,
+                "orphaned_files_removed": orphaned_count,
             }
-            
+
         except FileNotFoundError as e:
             self.logger.error(f"CSV source file not found: {e}")
             raise
@@ -237,19 +304,21 @@ class InventoryManager:
         inventory: Dict[str, Any] = defaultdict(lambda: {"hosts": {}})
 
         for host in hosts:
+            if host.environment != environment:
+                continue
             host_key = host.get_inventory_key_value(self.config.inventory_key)
-            inventory[environment]["hosts"][host_key] = None
+            inventory[environment]["hosts"][host_key] = {}
 
             if host.application_service:
                 app_group = host.get_app_group_name()
                 if app_group:
-                    inventory[app_group]["hosts"][host_key] = None
+                    inventory[app_group]["hosts"][host_key] = {}
 
             # Support multiple products per host
             if host.product_id:
                 product_groups = host.get_product_group_names()
                 for prod_group in product_groups:
-                    inventory[prod_group]["hosts"][host_key] = None
+                    inventory[prod_group]["hosts"][host_key] = {}
 
             # Add site_code group if available
             if host.site_code:
@@ -257,36 +326,47 @@ class InventoryManager:
                 site_code_str = str(host.site_code).strip()
                 if site_code_str:
                     site_group = f"site_{site_code_str.lower().replace('-', '_')}"
-                    inventory[site_group]["hosts"][host_key] = None
+                    inventory[site_group]["hosts"][host_key] = {}
 
         return dict(inventory)
 
     def write_inventory_file(
         self, inventory: Dict[str, Any], output_file: Path, title: str
     ) -> None:
-        """Write inventory to YAML file."""
+        """Write inventory to YAML file, omitting empty groups."""
         ensure_directory_exists(str(output_file.parent))
 
+        # Remove groups with no hosts
+        filtered_inventory = {}
+        for group, data in inventory.items():
+            hosts = data.get("hosts", {})
+            if hosts and len(hosts) > 0:
+                filtered_inventory[group] = data
+
         with output_file.open("w", encoding="utf-8") as f:
-            f.write("---\n")
+            f.write("# ----------------------------------------------------------------------\n")
+            f.write("# AUTO-GENERATED FILE - DO NOT EDIT MANUALLY\n")
+            f.write("# This file is generated by the inventory management system.\n")
+            f.write("# Any manual changes will be overwritten the next time inventory is generated.\n")
+            f.write("# ----------------------------------------------------------------------\n")
             f.write(f"# {title} Inventory\n")
             f.write(
                 "# Generated from enhanced CSV with CMDB and patch management integration\n"
             )
             f.write(f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("\n")
-            yaml.dump(inventory, f, default_flow_style=False, sort_keys=True)
+            yaml.dump(filtered_inventory, f, default_flow_style=False, sort_keys=True)
 
     def _generate_inventory_file(self, environment: str, hosts: List[Host]) -> Path:
         """Generate inventory file for a specific environment.
-        
+
         Args:
             environment: Environment name
             hosts: List of hosts for this environment
-            
+
         Returns:
             Path to generated inventory file
-            
+
         Raises:
             OSError: If file cannot be written
         """
@@ -295,10 +375,10 @@ class InventoryManager:
             active_hosts = [h for h in hosts if h.is_active]
             for host in active_hosts:
                 self.create_host_vars(host, self.config.host_vars_dir)
-                
+
             # Build inventory structure
             inventory = self.build_environment_inventory(active_hosts, environment)
-            
+
             # Update statistics
             self.stats.application_groups = len(
                 [g for g in inventory.keys() if g.startswith("app_")]
@@ -306,29 +386,29 @@ class InventoryManager:
             self.stats.product_groups = len(
                 [g for g in inventory.keys() if g.startswith("product_")]
             )
-            
+
             # Write inventory file
             output_file = self.config.inventory_dir / f"{environment}.yml"
             self.write_inventory_file(
                 inventory, output_file, f"{environment.title()} Environment"
             )
-            
+
             self.logger.info(
                 f"Generated {environment} inventory: "
                 f"{len(active_hosts)} hosts, "
                 f"{self.stats.application_groups} app groups, "
                 f"{self.stats.product_groups} product groups"
             )
-            
-            return output_file
-            
+
+            return output_file  # type: ignore[no-any-return]
+
         except OSError as e:
             self.logger.error(f"Failed to write inventory file for {environment}: {e}")
             raise
         except Exception as e:
             self.logger.error(
                 f"Unexpected error generating inventory for {environment}: {e}",
-                exc_info=True
+                exc_info=True,
             )
             raise ValueError(f"Failed to generate {environment} inventory: {e}") from e
 

@@ -122,21 +122,21 @@ class HostManager:
         self, hostname: str, date: str, reason: str = "", dry_run: bool = False
     ) -> bool:
         """Decommission a host with detailed logging and error handling.
-        
+
         Args:
             hostname: Hostname to decommission
             date: Decommission date in YYYY-MM-DD format
             reason: Reason for decommissioning
             dry_run: If True, only show what would be done
-            
+
         Returns:
             True if successful, False otherwise
-            
+
         Raises:
             ValueError: If date format is invalid or in the future
         """
         self.logger.info(f"Starting decommission process for {hostname}")
-        
+
         # Validate date format
         try:
             parsed_date = datetime.strptime(date, "%Y-%m-%d")
@@ -149,7 +149,7 @@ class HostManager:
 
         # Sanitize the reason
         sanitized_reason = re.sub(r"[^\w\s\-\.]", "", reason)[:100]
-        
+
         try:
             hosts = self.load_hosts_from_csv_raw()
             host_found = False
@@ -157,7 +157,7 @@ class HostManager:
             for host in hosts:
                 if host.get("hostname", "").strip() == hostname:
                     host_found = True
-                    
+
                     # Check if already decommissioned
                     if host.get("status", "").strip() == "decommissioned":
                         self.logger.warning(
@@ -177,7 +177,7 @@ class HostManager:
                     host["status"] = "decommissioned"
                     host["decommission_date"] = date
                     host["notes"] = sanitized_reason
-                    
+
                     self.logger.info(
                         f"Decommissioned host {hostname} with date {date}. "
                         f"Reason: {sanitized_reason if sanitized_reason else 'No reason provided'}"
@@ -194,13 +194,17 @@ class HostManager:
                     self.save_hosts_to_csv(hosts)
                     self.logger.info(f"Successfully saved updated inventory")
                 except Exception as e:
-                    self.logger.error(f"Failed to save inventory after decommission: {e}")
+                    self.logger.error(
+                        f"Failed to save inventory after decommission: {e}"
+                    )
                     return False
 
             return True
-            
+
         except Exception as e:
-            self.logger.error(f"Error during decommission operation: {e}", exc_info=True)
+            self.logger.error(
+                f"Error during decommission operation: {e}", exc_info=True
+            )
             return False
 
     def list_expired_hosts(

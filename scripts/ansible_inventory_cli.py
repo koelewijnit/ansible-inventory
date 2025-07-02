@@ -33,7 +33,7 @@ from core import (
 
 class CommandRegistry:
     """Registry for all available CLI commands.
-    
+
     This registry automatically discovers and manages all available commands,
     providing a centralized location for command registration and instantiation.
     """
@@ -45,7 +45,7 @@ class CommandRegistry:
 
     def _register_commands(self) -> None:
         """Auto-discover and register all commands.
-        
+
         This method imports and registers all built-in commands.
         Commands should follow the naming convention: {name}Command
         """
@@ -59,44 +59,46 @@ class CommandRegistry:
             self.register("health", HealthCommand)
             self.register("validate", ValidateCommand)
             self.register("lifecycle", LifecycleCommand)
-            
+
         except ImportError as e:
             raise ImportError(f"Failed to import command modules: {e}") from e
 
     def register(self, name: str, command_class: Any) -> None:
         """Register a new command with validation.
-        
+
         Args:
             name: Command name (used in CLI)
             command_class: Class that implements BaseCommand interface
-            
+
         Raises:
             ValueError: If command name is invalid or already registered
         """
         if not name or not isinstance(name, str):
             raise ValueError("Command name must be a non-empty string")
-            
+
         if name in self._commands:
             raise ValueError(f"Command '{name}' is already registered")
-            
+
         # Validate that command_class is a proper command
-        if not hasattr(command_class, 'execute') or not hasattr(command_class, 'add_parser_arguments'):
+        if not hasattr(command_class, "execute") or not hasattr(
+            command_class, "add_parser_arguments"
+        ):
             raise ValueError(
                 f"Command class '{command_class.__name__}' must implement "
                 "BaseCommand interface (execute and add_parser_arguments methods)"
             )
-            
+
         self._commands[name] = command_class
 
     def get_command_class(self, name: str) -> Any:
         """Get the class for a registered command.
-        
+
         Args:
             name: Command name
-            
+
         Returns:
             Command class
-            
+
         Raises:
             ValueError: If command is not registered
         """
@@ -109,7 +111,7 @@ class CommandRegistry:
 
     def get_available_commands(self) -> List[str]:
         """Get list of all registered command names.
-        
+
         Returns:
             Sorted list of command names
         """
@@ -119,15 +121,15 @@ class CommandRegistry:
         self, name: str, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> BaseCommand:
         """Create a command instance with the given parameters.
-        
+
         Args:
             name: Command name
             csv_file: Optional CSV file path
             logger: Optional logger instance
-            
+
         Returns:
             Instantiated command object
-            
+
         Raises:
             ValueError: If command creation fails
         """

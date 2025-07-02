@@ -329,6 +329,7 @@ class InventoryStats:
     application_groups: int = 0
     product_groups: int = 0
     generation_time: float = 0.0
+    orphaned_files_removed: int = 0
 
     def add_host(self, host: Host) -> None:
         """Add a host to the statistics."""

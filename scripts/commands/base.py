@@ -44,7 +44,7 @@ class BaseCommand(ABC):
 
 class CommandResult:
     """Standard result structure for command execution.
-    
+
     This class provides a consistent format for command results with
     success status, data payload, error messages, and optional metadata.
     """
@@ -57,7 +57,7 @@ class CommandResult:
         message: Optional[str] = None,
     ) -> None:
         """Initialize a command result.
-        
+
         Args:
             success: Whether the command succeeded
             data: Optional data payload with command output
@@ -71,7 +71,7 @@ class CommandResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the result to a dictionary format.
-        
+
         Returns:
             Dictionary containing result fields
         """

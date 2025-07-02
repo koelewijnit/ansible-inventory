@@ -86,26 +86,34 @@ class GenerateCommand(BaseCommand):
                 return self._dry_run_generate(args, inventory_manager)
 
             # Generate inventories using the manager
-            stats = inventory_manager.generate_inventories(
-                output_dir=args.output_dir,
-                host_vars_dir=args.host_vars_dir,
+            result = inventory_manager.generate_inventories(
                 environments=args.environments,
+                dry_run=args.dry_run,
             )
+
+            # Extract statistics from the result
+            generated_files = result.get("generated_files", [])
+            stats = result.get("stats", {})
+            orphaned_removed = result.get("orphaned_files_removed", 0)
 
             # Prepare result
             result_data = {
                 "command": "generate",
                 "success": True,
                 "statistics": {
-                    "total_hosts": stats.total_hosts,
-                    "active_hosts": stats.active_hosts,
-                    "decommissioned_hosts": stats.decommissioned_hosts,
-                    "generation_time": round(stats.generation_time, 3),
-                    "environment_counts": stats.environment_counts,
+                    "total_hosts": stats.get("total_hosts", 0),
+                    "active_hosts": stats.get("active_hosts", 0),
+                    "decommissioned_hosts": stats.get("decommissioned_hosts", 0),
+                    "generation_time": stats.get("generation_time", 0),
+                    "environment_counts": stats.get("environment_counts", {}),
+                    "application_groups": stats.get("application_groups", 0),
+                    "product_groups": stats.get("product_groups", 0),
+                    "orphaned_files_removed": orphaned_removed,
                 },
+                "generated_files": generated_files,
                 "output_paths": {
-                    "inventory_dir": str(args.output_dir),
-                    "host_vars_dir": str(args.host_vars_dir),
+                    "inventory_dir": str(inventory_manager.config.inventory_dir),
+                    "host_vars_dir": str(inventory_manager.config.host_vars_dir),
                 },
                 "inventory_key": getattr(args, "inventory_key", "hostname"),
             }
@@ -113,8 +121,8 @@ class GenerateCommand(BaseCommand):
             return CommandResult(
                 success=True,
                 data=result_data,
-                message="✅ Generated inventories in {} using {} as inventory key".format(
-                    args.output_dir, getattr(args, "inventory_key", "hostname")
+                message="✅ Generated inventories using {} as inventory key".format(
+                    getattr(args, "inventory_key", "hostname")
                 ),
             ).to_dict()
 
@@ -133,6 +141,12 @@ class GenerateCommand(BaseCommand):
     ) -> Dict[str, Any]:
         """Perform a dry run to show what would be generated."""
         try:
+            # Perform dry run on inventory manager to get full stats
+            result = inventory_manager.generate_inventories(
+                environments=args.environments,
+                dry_run=True,
+            )
+
             # Load hosts to show what would be processed
             hosts = inventory_manager.load_hosts()
 
@@ -169,6 +183,7 @@ class GenerateCommand(BaseCommand):
                     "host_vars_files": total_host_vars,
                     "environments": target_environments,
                     "environment_stats": env_stats,
+                    "orphaned_files": result.get("orphaned_files_removed", 0),
                 },
                 "output_paths": {
                     "inventory_dir": str(args.output_dir),
@@ -253,6 +268,12 @@ class GenerateCommand(BaseCommand):
                     )
                 )
 
+            # Add orphaned files info
+            orphaned = would_generate.get("orphaned_files", 0)
+            if orphaned > 0:
+                lines.append("")
+                lines.append(f"Would clean up: {orphaned} orphaned host_vars files")
+
             return "\n".join(lines)
 
         else:
@@ -266,9 +287,19 @@ class GenerateCommand(BaseCommand):
                 f"   Active: {stats.get('active_hosts', 0)}",
                 f"   Decommissioned: {stats.get('decommissioned_hosts', 0)}",
                 f"   Generation time: {stats.get('generation_time', 0)}s",
-                "",
-                f"🎯 Generated inventories in {output_dir}",
             ]
+
+            # Add orphaned files cleanup info
+            orphaned_removed = stats.get("orphaned_files_removed", 0)
+            if orphaned_removed > 0:
+                lines.append(f"   Orphaned files cleaned: {orphaned_removed}")
+
+            lines.extend(
+                [
+                    "",
+                    f"🎯 Generated inventories in {output_dir}",
+                ]
+            )
 
             env_counts = stats.get("environment_counts", {})
             if env_counts:

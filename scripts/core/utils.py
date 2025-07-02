@@ -68,20 +68,20 @@ def get_logger(name: str) -> logging.Logger:
 
 def setup_logging(level: str = "INFO") -> None:
     """Configure logging for the application.
-    
+
     Sets up the root logger with appropriate formatting and level.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR)
     """
     logger = get_logger(__name__)
-    
+
     # Validate log level
     valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
     if level.upper() not in valid_levels:
         logger.warning(f"Invalid log level '{level}', defaulting to INFO")
         level = "INFO"
-        
+
     logging.basicConfig(
         level=getattr(logging, level.upper()),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -348,10 +348,10 @@ def validate_environment(environment: str) -> Optional[str]:
     """
     if not environment:
         return "Environment cannot be empty"
-        
+
     if environment not in ENVIRONMENTS:
         return f"Invalid environment '{environment}'. Must be one of: {', '.join(ENVIRONMENTS)}"
-        
+
     return None
 
 
@@ -366,11 +366,11 @@ def validate_status(status: str) -> Optional[str]:
     """
     if not status:
         return "Status cannot be empty"
-        
+
     # Normalize to lowercase for comparison
     status_lower = status.lower()
     valid_statuses_lower = [s.lower() for s in VALID_STATUS_VALUES]
-    
+
     if status_lower not in valid_statuses_lower:
         valid_statuses = ", ".join(VALID_STATUS_VALUES)
         return f"Invalid status '{status}'. Must be one of: {valid_statuses}"
@@ -389,21 +389,21 @@ def validate_hostname(hostname: str) -> Optional[str]:
     """
     if not hostname or not hostname.strip():
         return "Hostname is required and cannot be empty"
-        
+
     hostname = hostname.strip()
-    
+
     # Check length
     if len(hostname) > 63:
         return f"Hostname too long ({len(hostname)} chars). Maximum is 63 characters"
-    
+
     # Check for valid characters (alphanumeric, hyphens, underscores)
-    if not re.match(r'^[a-zA-Z0-9_-]+$', hostname):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", hostname):
         return "Hostname contains invalid characters. Use only letters, numbers, hyphens, and underscores"
-        
+
     # Check if starts/ends with hyphen
-    if hostname.startswith('-') or hostname.endswith('-'):
+    if hostname.startswith("-") or hostname.endswith("-"):
         return "Hostname cannot start or end with a hyphen"
-        
+
     return None
 
 
@@ -437,34 +437,36 @@ def run_ansible_command(
 
     Returns:
         Tuple of (success, stdout, stderr)
-        
+
     Warning:
         Only pass trusted, validated input to this function. Command arguments
         are NOT sanitized and could pose security risks if user input is passed.
     """
     logger = get_logger(__name__)
-    
+
     # Validate arguments
     if not args or not isinstance(args, list):
         logger.error("Invalid arguments provided to run_ansible_command")
         return False, "", "Invalid command arguments"
-    
+
     # Log the command being run (but be careful not to log sensitive data)
-    logger.debug(f"Running command: {' '.join(args[:2])}...")  # Only log command and first arg
-    
+    logger.debug(
+        f"Running command: {' '.join(args[:2])}..."
+    )  # Only log command and first arg
+
     try:
         # Set timeout to prevent hanging
         result = subprocess.run(
-            args, 
-            cwd=cwd, 
-            capture_output=True, 
+            args,
+            cwd=cwd,
+            capture_output=True,
             text=True,
             timeout=300,  # 5 minute timeout
-            check=False  # Don't raise on non-zero exit
+            check=False,  # Don't raise on non-zero exit
         )
-        
+
         success = result.returncode == 0
-        
+
         if not success:
             logger.warning(
                 f"Command failed with exit code {result.returncode}: "
@@ -472,9 +474,9 @@ def run_ansible_command(
             )
         else:
             logger.debug("Command completed successfully")
-            
+
         return success, result.stdout, result.stderr
-        
+
     except subprocess.TimeoutExpired:
         error_msg = "Command timed out after 5 minutes"
         logger.error(error_msg)
@@ -553,19 +555,19 @@ def save_yaml_file(
         data: Data to save
         file_path: Path to save file
         header_comment: Optional header comment
-        
+
     Raises:
         OSError: If file cannot be written
         yaml.YAMLError: If data cannot be serialized to YAML
     """
     logger = get_logger(__name__)
     path_obj = Path(file_path)
-    
+
     try:
         # Create parent directories if needed
         path_obj.parent.mkdir(parents=True, exist_ok=True)
         logger.debug(f"Ensuring directory exists: {path_obj.parent}")
-        
+
         # Write YAML file
         with open(path_obj, "w") as f:
             f.write("---\n")
@@ -573,9 +575,9 @@ def save_yaml_file(
                 f.write(f"# {header_comment}\n")
                 f.write("\n")
             yaml.dump(data, f, default_flow_style=False, sort_keys=True)
-        
+
         logger.info(f"Successfully saved YAML file: {file_path}")
-        
+
     except OSError as e:
         logger.error(f"Failed to write YAML file {file_path}: {e}")
         raise OSError(f"Cannot write to {file_path}: {e}") from e
@@ -592,25 +594,25 @@ def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
 
     Returns:
         Loaded data as dictionary or None if file doesn't exist or can't be read
-        
+
     Note:
         This function logs errors but doesn't raise exceptions, returning None
         on any failure for backward compatibility.
     """
     logger = get_logger(__name__)
-    
+
     try:
         path_obj = Path(file_path)
-        
+
         # Check if file exists
         if not path_obj.exists():
             logger.debug(f"YAML file does not exist: {file_path}")
             return None
-            
+
         # Try to read and parse the file
         with open(path_obj, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-            
+
             # Ensure we return a dict or None
             if data is None:
                 logger.debug(f"YAML file is empty: {file_path}")
@@ -621,10 +623,10 @@ def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
                     f"got {type(data).__name__}"
                 )
                 return None
-                
+
             logger.debug(f"Successfully loaded YAML file: {file_path}")
             return data
-            
+
     except yaml.YAMLError as e:
         logger.error(f"YAML parsing error in {file_path}: {e}")
         return None

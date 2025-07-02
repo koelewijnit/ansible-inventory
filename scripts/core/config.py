@@ -95,14 +95,14 @@ def load_config() -> Dict[str, Any]:
 
 def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
     """Deep merge two dictionaries, with override values taking precedence.
-    
+
     Args:
         base: Base dictionary to merge into
         override: Dictionary with values that override base
-        
+
     Returns:
         New dictionary with merged values
-        
+
     Example:
         >>> base = {'a': 1, 'b': {'x': 2}}
         >>> override = {'b': {'y': 3}}
@@ -120,16 +120,16 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
 
 def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
     """Apply environment variable overrides to configuration.
-    
+
     Looks for environment variables with specific prefixes and updates
     the configuration accordingly.
-    
+
     Args:
         config: Configuration dictionary to update
-        
+
     Returns:
         Updated configuration dictionary
-        
+
     Environment Variables:
         INVENTORY_CSV_FILE: Override data.csv_file
         INVENTORY_LOG_LEVEL: Override logging.level
