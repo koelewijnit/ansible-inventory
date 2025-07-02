@@ -181,7 +181,7 @@ python scripts/ansible_inventory_cli.py validate --help
 | `environment` | ✅ | `production` | Environment |
 | `status` | ✅ | `active` | Server status |
 | `cname` | ❌ | `web.example.com` | DNS alias |
-| `instance` | ❌ | `1` | Instance number |
+| `instance` | ❌ | `1` | Instance number (use plain integers like `1`, `2`, `3`) |
 | `site_code` | ❌ | `us-east-1` | Site code/geographic location |
 | `ssl_port` | ❌ | `443` | SSL port number |
 | `application_service` | ❌ | `web` | Service type |

@@ -8,7 +8,7 @@ The source file `inventory_source/hosts.csv` defines hosts. Required columns are
 | `environment` | Environment such as `production` or `development` |
 | `status` | `active` or `decommissioned` |
 | `cname` | DNS alias (optional) |
-| `instance` | Instance number (optional) |
+| `instance` | Instance number (use plain integers like `1`, `2`, `3`; optional) |
 | `site_code` | Physical location |
 | `ssl_port` | HTTPS port |
 | `application_service` | Functional group, e.g. `web` |
@@ -20,6 +20,8 @@ The source file `inventory_source/hosts.csv` defines hosts. Required columns are
 | `dashboard_group` | Monitoring group |
 | `decommission_date` | Planned removal date |
 | `ansible_tags` | Extra tags for playbooks |
+
+Use **plain integers** (`1`, `2`, `3`, ...) in the `instance` column.
 
 Example snippet:
 
