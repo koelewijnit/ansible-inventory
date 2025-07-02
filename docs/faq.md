@@ -2,12 +2,12 @@
 
 ## The CLI cannot find `hosts.csv`
 
-Check that `inventory_source/hosts.csv` exists or use `--csv-file` to specify a path.
+Ensure `inventory_source/hosts.csv` exists or pass `--csv-file` with the path.
 
 ## How do I remove a host?
 
-Mark the host with status `decommissioned` and run `generate`.
+Set its status to `decommissioned` in the CSV and run `generate`.
 
 ## Where are inventories written?
 
-By default to the `inventory/` directory. Use `--output-dir` to change.
+By default to `inventory/`. Use `--output-dir` to change the location.

@@ -1,25 +1,29 @@
 # Usage
 
-The CLI provides several commands. The most common are shown below.
+The CLI exposes several subcommands. Examples below assume the virtual environment is active.
 
-## Generate Inventories
+## Generate inventories
 
 ```bash
 python scripts/ansible_inventory_cli.py generate
 ```
 
-Use `--environments` to limit output or `--dry-run` to preview changes.
+Limit to specific environments:
 
-## Health Check
+```bash
+python scripts/ansible_inventory_cli.py generate --environments production test
+```
+
+## Health check
 
 ```bash
 python scripts/ansible_inventory_cli.py health
 ```
 
-## Validate Data
+## Validate data
 
 ```bash
 python scripts/ansible_inventory_cli.py validate
 ```
 
-Run `python scripts/ansible_inventory_cli.py --help` for all options.
+Use `--help` on any command to see additional options.
