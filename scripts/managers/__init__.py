@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""
-Managers package for Ansible Inventory Management
+"""Managers package for Ansible Inventory Management.
 
-This package contains business logic managers that handle specific domains
-of functionality, separated from the CLI command layer.
+This package contains business logic managers that handle specific
+domains of functionality, separated from the CLI command layer.
 """
 
 from .host_manager import HostManager

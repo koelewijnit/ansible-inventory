@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Centralized Configuration for Ansible Inventory Management Scripts
+"""Centralized Configuration for Ansible Inventory Management Scripts.
 
 This module loads configuration from inventory-config.yml and provides
 backward-compatible access to all configuration values. Environment
@@ -339,8 +338,7 @@ def get_default_inventory_key() -> str:
 
 
 def validate_configuration() -> List[str]:
-    """
-    Validate that the configuration file has all expected sections.
+    """Validate that the configuration file has all expected sections.
 
     Returns:
         List of warnings about missing configuration sections

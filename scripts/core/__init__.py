@@ -1,5 +1,4 @@
-"""
-Core Infrastructure Package
+"""Core Infrastructure Package.
 
 This package contains the fundamental infrastructure modules for the
 Ansible Inventory Management System:

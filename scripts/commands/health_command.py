@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Health Command - System Health Monitoring
+Health command - system health monitoring.
 
 This command provides comprehensive health monitoring for the inventory system,
 including file consistency checks, orphaned file detection, and health scoring.
@@ -26,6 +26,7 @@ class HealthCommand(BaseCommand):
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
         self.validation_manager = ValidationManager(csv_file, self.logger)

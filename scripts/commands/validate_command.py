@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validate Command - Infrastructure Validation
+Validate command - infrastructure validation.
 
 This command handles comprehensive validation of the inventory structure,
 CSV data consistency, and Ansible configuration integrity.
@@ -27,6 +27,7 @@ class ValidateCommand(BaseCommand):
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
         self.validation_manager = ValidationManager(csv_file, self.logger)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate Command - Inventory Generation
+Generate command - inventory generation.
 
 This command handles the generation of Ansible inventory files from CSV data.
 It creates environment-specific inventories and host_vars files.
@@ -26,6 +26,7 @@ class GenerateCommand(BaseCommand):
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
         self.inventory_manager = InventoryManager(csv_file, self.logger)

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""
-Data Models for Ansible Inventory Management
+"""Data models for Ansible Inventory Management.
 
-This module contains structured data models using dataclasses for type safety,
-validation, and cleaner code organization.
+This module contains structured data models using dataclasses for type
+safety, validation, and cleaner code organization.
 """
 
 from dataclasses import dataclass, field
@@ -169,14 +168,20 @@ class Host:
         return None
 
     def get_product_ids(self) -> List[str]:
-        """Get list of product IDs for this host (supports comma-separated values)."""
+        """Return a list of product IDs for this host.
+
+        Supports comma-separated values.
+        """
         if not self.product_id:
             return []
         # Split on comma, clean up whitespace, and filter empty strings
         return [p.strip() for p in self.product_id.split(',') if p.strip()]
 
     def get_product_group_names(self) -> List[str]:
-        """Get all product group names for inventory (supports multiple products)."""
+        """Return all product group names for inventory.
+
+        Supports multiple products.
+        """
         product_ids = self.get_product_ids()
         return [f"product_{product_id}" for product_id in product_ids]
 
@@ -207,7 +212,7 @@ class Host:
                 raise ValueError("No valid inventory key found: neither hostname nor cname is available")
 
     def get_host_vars_filename(self, key_type: str = "hostname") -> str:
-        """Get the filename to use for host_vars based on the inventory key type."""
+        """Return the host_vars filename based on the inventory key type."""
         return f"{self.get_inventory_key_value(key_type)}.yml"
 
     def to_dict(self) -> Dict[str, str]:
