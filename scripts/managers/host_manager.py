@@ -14,10 +14,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from scripts.core import CSV_FILE as DEFAULT_CSV_FILE
-from scripts.core import get_logger
-from scripts.core.config import PROJECT_ROOT
-from scripts.core.models import InventoryConfig
+from core import CSV_FILE as DEFAULT_CSV_FILE
+from core import get_logger
+from core.config import PROJECT_ROOT
+from core.models import InventoryConfig
 
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:

@@ -14,15 +14,55 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
-from commands.base import CommandRegistry
+from commands.base import BaseCommand
 from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging
 
 # Add current directory to path for imports
 SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+class CommandRegistry:
+    """Registry for all available CLI commands."""
+
+    def __init__(self) -> None:
+        self._commands: Dict[str, Any] = {}
+        self._register_commands()
+
+    def _register_commands(self) -> None:
+        """Auto-discover and register all commands."""
+        from commands.generate_command import GenerateCommand
+        from commands.health_command import HealthCommand
+        from commands.lifecycle_command import LifecycleCommand
+        from commands.validate_command import ValidateCommand
+
+        self.register("generate", GenerateCommand)
+        self.register("health", HealthCommand)
+        self.register("validate", ValidateCommand)
+        self.register("lifecycle", LifecycleCommand)
+
+    def register(self, name: str, command_class: Any) -> None:
+        """Register a new command."""
+        self._commands[name] = command_class
+
+    def get_command_class(self, name: str) -> Any:
+        """Get the class for a registered command."""
+        if name not in self._commands:
+            raise ValueError(f"Unknown command: {name}")
+        return self._commands[name]
+
+    def create_command(
+        self, name: str, csv_file: Optional[Path] = None, logger: Optional[Any] = None
+    ) -> BaseCommand:
+        """Create an instance of a registered command."""
+        command_class = self.get_command_class(name)
+        return command_class(csv_file=csv_file, logger=logger)
+
+    def get_available_commands(self) -> list[str]:
+        """Get a list of all registered command names."""
+        return sorted(self._commands.keys())
 
 
 class ModularInventoryCLI:
@@ -51,7 +91,7 @@ Examples:
   %(prog)s validate --comprehensive
 
   # Host lifecycle management
-  %(prog)s lifecycle decommission --hostname prd-web-use1-01 --date 2025-01-15
+  %(prog)s lifecycle decommission --hostname prd-web-use1-1 --date 2025-1-15
   %(prog)s lifecycle cleanup --dry-run
 
   # Import existing inventories

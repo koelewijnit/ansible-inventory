@@ -154,7 +154,7 @@ examples:
 
 # Feature flags - enable/disable functionality
 features:
-  geographic_validation: true
+  
   patch_management: true
   lifecycle_management: true
   backup_on_generate: false
