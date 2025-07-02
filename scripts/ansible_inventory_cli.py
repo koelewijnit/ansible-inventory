@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Ansible Inventory Management CLI
+"""Ansible Inventory Management CLI.
 
 A comprehensive tool for managing Ansible inventories using CSV data sources
 with a clean modular command architecture.
@@ -29,6 +28,7 @@ class CommandRegistry:
     """Registry for all available CLI commands."""
 
     def __init__(self) -> None:
+        """Initialise the registry with built-in commands."""
         self._commands: Dict[str, Any] = {}
         self._register_commands()
 
@@ -70,6 +70,7 @@ class ModularInventoryCLI:
     """Ansible Inventory Management CLI."""
 
     def __init__(self) -> None:
+        """Create the CLI and prepare logging."""
         self.logger = get_logger(__name__)
         self.command_registry = CommandRegistry()
         self.start_time = time.time()
@@ -238,7 +239,7 @@ https://github.com/your-org/inventory-structure
             return f"❌ {error}"
 
     def run(self, argv: Any = None) -> None:
-        """Main entry point for the CLI."""
+        """Run the command-line interface."""
         parser = self.create_parser()
         args = parser.parse_args(argv)
 
@@ -263,7 +264,7 @@ https://github.com/your-org/inventory-structure
 
 
 def main() -> None:
-    """Main entry point."""
+    """Execute the CLI entry point."""
     try:
         cli = ModularInventoryCLI()
         cli.run()

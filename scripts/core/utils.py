@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""
-Utility Functions for Ansible Inventory Management Scripts
+"""Utility functions for Ansible Inventory Management scripts.
 
-This module contains shared functionality used across multiple inventory management
-scripts to eliminate code duplication and ensure consistency.
+This module contains shared functionality used across multiple inventory
+management scripts to eliminate code duplication and ensure consistency.
 """
 
 import csv
@@ -83,8 +82,7 @@ def load_csv_data(
     required_fields: Optional[List[str]] = None,
     inventory_key: str = "hostname"
 ) -> List[Dict[str, str]]:
-    """
-    Load and validate CSV data with comprehensive error handling.
+    """Load and validate CSV data with comprehensive error handling.
 
     Args:
         csv_file: Path to CSV file. Uses default if None.
@@ -150,7 +148,7 @@ def load_csv_data(
 
 
 def validate_hostname_decorator(func: Any) -> Any:
-    """Decorator to validate hostname parameter."""
+    """Validate the hostname parameter before calling ``func``."""
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -172,7 +170,7 @@ def validate_hostname_decorator(func: Any) -> Any:
 
 
 def validate_environment_decorator(func: Any) -> Any:
-    """Decorator to validate environment parameter."""
+    """Validate the environment parameter before calling ``func``."""
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -188,8 +186,7 @@ def validate_environment_decorator(func: Any) -> Any:
 
 
 def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict[str, str]]:
-    """
-    Load all hosts from the CSV file.
+    """Load all hosts from the CSV file.
 
     Args:
         csv_file: Path to CSV file. If None, uses default from config.
@@ -220,8 +217,7 @@ def load_hosts_from_csv(csv_file: Optional[str] = None) -> List[Dict[str, str]]:
 def get_hosts_by_environment(
     environment: str, csv_file: Optional[str] = None
 ) -> List[Dict[str, str]]:
-    """
-    Get all hosts for a specific environment.
+    """Get all hosts for a specific environment.
 
     Args:
         environment: Environment to filter by
@@ -239,8 +235,7 @@ def get_hosts_by_environment(
 def get_hosts_by_status(
     status: str, csv_file: Optional[str] = None
 ) -> List[Dict[str, str]]:
-    """
-    Get all hosts with a specific status.
+    """Get all hosts with a specific status.
 
     Args:
         status: Status to filter by (active, decommissioned)
@@ -258,8 +253,7 @@ def get_hosts_by_status(
 
 
 def get_hostnames_from_csv(csv_file: Optional[str] = None) -> Set[str]:
-    """
-    Extract all hostnames from the CSV file.
+    """Extract all hostnames from the CSV file.
 
     Args:
         csv_file: Path to CSV file. If None, uses default from config.
@@ -272,8 +266,7 @@ def get_hostnames_from_csv(csv_file: Optional[str] = None) -> Set[str]:
 
 
 def get_host_vars_files() -> Set[str]:
-    """
-    Get all host_vars files (hostnames without .yml extension).
+    """Get all host_vars files (hostnames without .yml extension).
 
     Returns:
         Set of hostnames that have host_vars files
@@ -289,8 +282,7 @@ def get_host_vars_files() -> Set[str]:
 
 
 def find_orphaned_host_vars(csv_file: Optional[str] = None) -> Set[str]:
-    """
-    Find host_vars files that don't have corresponding entries in CSV.
+    """Find host_vars files that don't have corresponding entries in CSV.
 
     Args:
         csv_file: Path to CSV file. If None, uses default from config.
@@ -304,8 +296,7 @@ def find_orphaned_host_vars(csv_file: Optional[str] = None) -> Set[str]:
 
 
 def validate_hostname(hostname: str) -> Optional[str]:
-    """
-    Validate hostname format.
+    """Validate hostname format.
 
     Args:
         hostname: Hostname to validate
@@ -326,8 +317,7 @@ def validate_hostname(hostname: str) -> Optional[str]:
 
 
 def validate_environment(environment: str) -> Optional[str]:
-    """
-    Validate environment value.
+    """Validate environment value.
 
     Args:
         environment: Environment to validate
@@ -343,8 +333,7 @@ def validate_environment(environment: str) -> Optional[str]:
 
 
 def validate_status(status: str) -> Optional[str]:
-    """
-    Validate status value.
+    """Validate status value.
 
     Args:
         status: Status to validate
@@ -360,8 +349,7 @@ def validate_status(status: str) -> Optional[str]:
 
 
 def validate_date_format(date_str: str) -> Optional[str]:
-    """
-    Validate date format.
+    """Validate date format.
 
     Args:
         date_str: Date string to validate
@@ -382,8 +370,7 @@ def validate_date_format(date_str: str) -> Optional[str]:
 def run_ansible_command(
     args: List[str], cwd: Optional[str] = None
 ) -> Tuple[bool, str, str]:
-    """
-    Run an Ansible command and capture output.
+    """Run an Ansible command and capture output.
 
     Args:
         args: List of command arguments (must be trusted input)
@@ -407,8 +394,7 @@ def ensure_directory_exists(directory_path: str) -> None:
 
 
 def test_ansible_inventory() -> Tuple[bool, str]:
-    """
-    Test if ansible-inventory command works.
+    """Test if ansible-inventory command works.
 
     Returns:
         Tuple of (success, error_message)
@@ -429,8 +415,7 @@ def test_ansible_inventory() -> Tuple[bool, str]:
 
 
 def create_backup_file(source_file: str, backup_dir: Optional[str] = None) -> str:
-    """
-    Create a timestamped backup of a file.
+    """Create a timestamped backup of a file.
 
     Args:
         source_file: Path to file to backup
@@ -460,8 +445,7 @@ def create_backup_file(source_file: str, backup_dir: Optional[str] = None) -> st
 def save_yaml_file(
     data: Dict, file_path: str, header_comment: Optional[str] = None
 ) -> None:
-    """
-    Save data to a YAML file with optional header comment.
+    """Save data to a YAML file with optional header comment.
 
     Args:
         data: Data to save
@@ -480,8 +464,7 @@ def save_yaml_file(
 
 
 def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
-    """
-    Load data from a YAML file.
+    """Load data from a YAML file.
 
     Args:
         file_path: Path to YAML file
@@ -498,8 +481,7 @@ def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
 
 
 def format_console_output(title: str, content: List[str], width: int = 60) -> str:
-    """
-    Format console output with title and content.
+    """Format console output with title and content.
 
     Args:
         title: Title to display
@@ -515,8 +497,7 @@ def format_console_output(title: str, content: List[str], width: int = 60) -> st
 
 
 def print_summary_table(headers: List[str], rows: List[List[str]]) -> None:
-    """
-    Print a formatted table with headers and rows.
+    """Print a formatted table with headers and rows.
 
     Args:
         headers: Column headers
@@ -548,8 +529,7 @@ def print_summary_table(headers: List[str], rows: List[List[str]]) -> None:
 
 
 def get_file_age_days(file_path: str) -> Optional[int]:
-    """
-    Get the age of a file in days.
+    """Get the age of a file in days.
 
     Args:
         file_path: Path to file
@@ -569,8 +549,7 @@ def get_file_age_days(file_path: str) -> Optional[int]:
 def validate_csv_headers(
     csv_file: Path, expected_headers: List[str]
 ) -> ValidationResult:
-    """
-    Validate CSV headers against expected fields.
+    """Validate CSV headers against expected fields.
 
     Args:
         csv_file: Path to CSV file
@@ -626,14 +605,13 @@ def validate_csv_headers(
 
 
 def validate_csv_structure(csv_file: Path) -> ValidationResult:
-    """
-    Comprehensive CSV validation including headers, data types, and structure.
+    """Perform comprehensive CSV validation.
 
     Args:
-        csv_file: Path to CSV file to validate
+        csv_file: Path to the CSV file to validate.
 
     Returns:
-        ValidationResult with detailed validation results
+        ValidationResult with detailed validation results.
     """
     from .models import Host
     from .config import get_csv_template_headers
@@ -698,8 +676,7 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
 
 
 def get_csv_template() -> str:
-    """
-    Get a CSV template with all required headers and example data.
+    """Get a CSV template with all required headers and example data.
 
     Headers are loaded from configuration and organized logically:
     - Required fields first (hostname, environment, status)
@@ -738,8 +715,7 @@ def get_csv_template() -> str:
 
 
 def create_csv_file(file_path: Path, overwrite: bool = False) -> bool:
-    """
-    Create a new CSV file with template content.
+    """Create a new CSV file with template content.
 
     Args:
         file_path: Path where to create the CSV file

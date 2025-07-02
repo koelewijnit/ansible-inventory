@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Host Manager - Host Lifecycle Management
+Host manager - host lifecycle management.
 
 Handles host lifecycle operations including decommissioning,
 cleanup, and host status management.
@@ -33,6 +33,7 @@ class HostManager:
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the host manager and load configuration."""
         self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.config = InventoryConfig.create_default()
@@ -141,7 +142,7 @@ class HostManager:
     def list_expired_hosts(
         self, grace_days_override: Optional[int] = None
     ) -> List[Dict]:
-        """List hosts that are past their grace period and eligible for cleanup."""
+        """Return hosts past their grace period that are eligible for cleanup."""
         hosts = self.load_hosts_from_csv_raw()
         expired_hosts = []
 

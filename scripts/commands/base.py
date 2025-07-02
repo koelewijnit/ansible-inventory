@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Base classes for CLI commands
+"""Base classes for CLI commands.
 
 This module contains the base classes that all commands inherit from.
 """
@@ -16,6 +15,7 @@ class BaseCommand(ABC):
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Store common options for commands."""
         self.csv_file = csv_file
         self.logger = logger
 
@@ -51,6 +51,7 @@ class CommandResult:
         message: str = "",
         error: str = "",
     ) -> None:
+        """Store command execution results."""
         self.success = success
         self.data = data or {}
         self.message = message

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lifecycle Command - Host Lifecycle Management
+Lifecycle command - host lifecycle management.
 
 This command handles host lifecycle operations including decommissioning,
 cleanup, and expired host management.
@@ -28,6 +28,7 @@ class LifecycleCommand(BaseCommand):
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the command with optional CSV path and logger."""
         super().__init__(csv_file, logger)
         self.logger = logger or get_logger(__name__)
         self.host_manager = HostManager(csv_file, self.logger)

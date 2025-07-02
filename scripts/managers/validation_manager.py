@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Validation Manager - Health and Validation Operations
+Validation manager - health and validation operations.
 
 Handles comprehensive validation of inventory structure, data consistency,
 and health monitoring with scoring and recommendations.
@@ -33,6 +33,7 @@ class ValidationManager:
     def __init__(
         self, csv_file: Optional[Path] = None, logger: Optional[Any] = None
     ) -> None:
+        """Initialise the validation manager."""
         self.csv_file: Path = csv_file if csv_file is not None else CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
         self.config = InventoryConfig.create_default()

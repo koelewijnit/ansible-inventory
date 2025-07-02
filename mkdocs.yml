@@ -67,34 +67,12 @@ theme:
 # Navigation
 nav:
   - Home: index.md
-  - Getting Started:
-    - Quick Start: getting-started/quick-start.md
-    - Installation: getting-started/installation.md
-    - Adding New Systems: getting-started/adding-systems.md
-    - First Steps: getting-started/first-steps.md
-  - User Guide:
-    - Overview: user-guide/overview.md
-    - CLI Commands: user-guide/cli-commands.md
-    - CSV Management: user-guide/csv-management.md
-    - Inventory Import: user-guide/inventory-import.md
-    - Health Monitoring: user-guide/health-monitoring.md
-    - Lifecycle Management: user-guide/lifecycle-management.md
-  - Development:
-    - Setup: development/setup.md
-    - Workflow: development/workflow.md
-    - Testing: development/testing.md
-    - Contributing: development/contributing.md
-  - Operations:
-    - Deployment: operations/deployment.md
-    - CI/CD Pipeline: operations/gitlab-cicd.md
-    - Monitoring: operations/monitoring.md
-    - Troubleshooting: operations/troubleshooting.md
-  - Reference:
-    - Configuration: reference/configuration.md
-    - CSV Format: reference/csv-format.md
-    - API Reference: reference/api.md
-    - Makefile Commands: reference/makefile.md
-  - Quick Reference: quick-reference.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - CSV Format: csv_format.md
+  - Ansible Inventory: ansible_inventory.md
+  - Contributing: contributing.md
+  - FAQ: faq.md
 
 # Plugins
 plugins:

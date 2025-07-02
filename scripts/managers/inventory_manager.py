@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Inventory Manager - Core Inventory Operations
+Inventory manager - core inventory operations.
 
 Handles the generation of Ansible inventory files and host_vars
 from CSV data sources.
@@ -42,6 +42,7 @@ class InventoryManager:
         logger: Optional[Any] = None,
         inventory_key: str = "hostname",
     ) -> None:
+        """Initialise the manager with configuration and logging."""
         self.config = InventoryConfig.create_default(inventory_key=inventory_key)
         self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
         self.logger = logger if logger else get_logger(__name__)
