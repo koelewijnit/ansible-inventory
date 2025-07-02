@@ -12,8 +12,7 @@ import shutil
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Set
-
+from typing import Any, Dict, List, Optional, Set
 
 # Ensure sibling modules are importable when this file is imported outside of
 # the `scripts` directory
@@ -192,7 +191,7 @@ class HostManager:
             if not dry_run and host_found:
                 try:
                     self.save_hosts_to_csv(hosts)
-                    self.logger.info(f"Successfully saved updated inventory")
+                    self.logger.info("Successfully saved updated inventory")
                 except Exception as e:
                     self.logger.error(
                         f"Failed to save inventory after decommission: {e}"

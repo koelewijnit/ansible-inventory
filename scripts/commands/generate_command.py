@@ -6,22 +6,21 @@ This command handles the generation of Ansible inventory files from CSV data.
 It creates environment-specific inventories and host_vars files.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-# Ensure sibling modules are importable when imported outside the `scripts`
-# directory
+from core import get_logger
+from managers.inventory_manager import InventoryManager
+
+from .base import BaseCommand, CommandResult
+
+# Ensure sibling modules are importable when this file is imported outside of
+# the `scripts` directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-
-from core import get_logger  # noqa: E402
-from managers.inventory_manager import InventoryManager  # noqa: E402
-
-from .base import BaseCommand, CommandResult  # noqa: E402
-
-import logging
 
 
 class GenerateCommand(BaseCommand):

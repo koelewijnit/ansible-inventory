@@ -5,10 +5,10 @@ This module contains structured data models using dataclasses for type
 safety, validation, and cleaner code organization.
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-import re
 from typing import Any, Dict, List, Optional
 
 

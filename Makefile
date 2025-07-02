@@ -1,13 +1,36 @@
 # Makefile for Ansible Inventory CLI
 # =================================
 
-.PHONY: help install install-dev test test-cov lint format security clean build docs pre-commit check health-check
+.PHONY: help install install-dev test test-cov lint format security clean build pre-commit check health-check
 
 # Default target
-help: ## Show this help message
-	@echo "Ansible Inventory CLI - Development Commands"
-	@echo "==========================================="
-	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+help:
+	@echo ""
+	@echo "Ansible Inventory CLI - Makefile Commands"
+	@echo "========================================="
+	@echo ""
+	@echo "Inventory Management:"
+	@echo "  generate             Generate inventory from CSV (safe, cleans up only obsolete host_vars)"
+	@echo "  generate-dry-run     Show what would be generated (dry run)"
+	@echo "  generate-fresh       Delete ALL host_vars and regenerate from CSV (destructive, use rarely)"
+	@echo ""
+	@echo "Validation & Health:"
+	@echo "  validate             Validate inventory structure"
+	@echo "  health-check         Run inventory health check"
+	@echo ""
+	@echo "Development & Quality:"
+	@echo "  install              Install the package"
+	@echo "  install-dev          Install development dependencies"
+	@echo "  lint                 Run all linting tools"
+	@echo "  format               Format code with black and isort"
+	@echo "  test                 Run tests"
+	@echo "  check                Run all quality checks"
+	@echo "  clean                Clean build artifacts"
+	@echo ""
+	@echo "CI/CD:"
+	@echo "  ci-install           Install for CI environment"
+	@echo "  ci-test              Run tests in CI environment"
+	@echo ""
 
 # Installation
 install: ## Install the package
@@ -92,22 +115,6 @@ validate: ## Validate inventory structure
 	ansible-inventory --inventory inventory/test.yml --list > /dev/null
 	ansible-inventory --inventory inventory/acceptance.yml --list > /dev/null
 	@echo "Inventory validation complete! ✅"
-
-# Documentation
-docs: ## Build documentation
-	@echo "Building documentation..."
-	@if [ -d "docs" ]; then \
-		cd docs && mkdocs build; \
-	else \
-		echo "Documentation directory not found. Run 'mkdocs new docs' first."; \
-	fi
-
-docs-serve: ## Serve documentation locally
-	@if [ -d "docs" ]; then \
-		cd docs && mkdocs serve; \
-	else \
-		echo "Documentation directory not found. Run 'mkdocs new docs' first."; \
-	fi
 
 # Build and Distribution
 clean: ## Clean build artifacts
@@ -232,4 +239,4 @@ backup-all: ## Backup all important files
 perf-test: ## Run performance tests
 	@echo "Running performance tests..."
 	time python scripts/ansible_inventory_cli.py health
-	@echo "Performance test complete! ⚡" 
+	@echo "Performance test complete! ⚡"

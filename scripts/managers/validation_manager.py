@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-
 # Ensure sibling modules are importable when imported outside of the `scripts`
 # directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()

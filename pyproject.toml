@@ -58,9 +58,6 @@ test = [
     "coverage>=7.0.0",
 ]
 docs = [
-    "mkdocs>=1.4.0",
-    "mkdocs-material>=9.0.0",
-    "mkdocs-include-markdown-plugin>=4.0.0",
 ]
 
 [project.urls]
@@ -187,4 +184,4 @@ directory = "htmlcov"
 exclude_dirs = ["tests"]
 skips = ["B101"]  # Skip assert_used test
 
-# Flake8 configuration (in setup.cfg since flake8 doesn't support pyproject.toml yet) 
+# Flake8 configuration (in setup.cfg since flake8 doesn't support pyproject.toml yet)

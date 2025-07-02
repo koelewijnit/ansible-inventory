@@ -1,12 +1,12 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import List
 
 import yaml
 
+from scripts.core.utils import load_csv_data
 from scripts.managers.inventory_manager import InventoryManager
 from scripts.managers.validation_manager import ValidationManager
-from scripts.core.utils import load_csv_data
 
 
 def create_csv(tmp_path: Path, rows: List[str]) -> Path:
@@ -22,19 +22,33 @@ def test_generate_inventory(tmp_path: Path):
         "db01,production,active,",
     ]
     csv_file = create_csv(tmp_path, rows)
-    out_dir = tmp_path / "inventory"
-    host_vars_dir = out_dir / "host_vars"
     manager = InventoryManager(csv_file=csv_file)
-    stats = manager.generate_inventories(out_dir, host_vars_dir, ["production"])
-    inv_file = out_dir / "production.yml"
+    inventory_result = manager.generate_inventories(environments=["production"])
+
+    # Check that the result contains expected data
+    assert inventory_result["dry_run"] is False
+    assert len(inventory_result["generated_files"]) > 0
+
+    # Check that the inventory file was created
+    inv_file = Path(inventory_result["generated_files"][0])
     assert inv_file.exists()
+
+    # Check the content
     data = yaml.safe_load(inv_file.read_text())
-    assert data["production"]["hosts"] == {"web01": None, "db01": None}
-    result = subprocess.run(
+    assert "production" in data
+    assert "hosts" in data["production"]
+    assert "web01" in data["production"]["hosts"]
+    assert "db01" in data["production"]["hosts"]
+
+    # Test with ansible-inventory
+    ansible_result = subprocess.run(
         ["ansible-inventory", "-i", str(inv_file), "--list"], capture_output=True
     )
-    assert result.returncode == 0
-    assert stats.total_hosts == 2
+    assert ansible_result.returncode == 0
+
+    # Check stats
+    stats = inventory_result["stats"]
+    assert stats["total_hosts"] == 2
 
 
 def test_validate_csv_duplicates(tmp_path: Path):

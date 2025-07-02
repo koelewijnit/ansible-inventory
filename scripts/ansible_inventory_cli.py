@@ -13,7 +13,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 # Add current directory to path for imports before local imports
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -21,14 +21,14 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from commands.base import BaseCommand  # noqa: E402
-from core import (
+from core import (  # noqa: E402
     CSV_FILE,
     LOG_LEVEL,
+    PROJECT_ROOT,
     VERSION,
     get_logger,
     setup_logging,
-    PROJECT_ROOT,
-)  # noqa: E402
+)
 
 
 class CommandRegistry:

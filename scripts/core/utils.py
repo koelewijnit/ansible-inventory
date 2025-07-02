@@ -8,13 +8,13 @@ management scripts to eliminate code duplication and ensure consistency.
 import csv
 import logging
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
-import re
 
 import yaml
 
@@ -131,7 +131,6 @@ def load_csv_data(
             for row_num, row in enumerate(
                 reader, start=2
             ):  # Start at 2 (header is row 1)
-
                 # Get the primary identifier based on inventory key
                 hostname = row.get("hostname", "").strip()
                 cname = row.get("cname", "").strip()
@@ -771,8 +770,8 @@ def validate_csv_structure(csv_file: Path) -> ValidationResult:
     Returns:
         ValidationResult with detailed validation results.
     """
-    from .models import Host
     from .config import get_csv_template_headers
+    from .models import Host
 
     result = ValidationResult()
 
@@ -848,10 +847,10 @@ def get_csv_template() -> str:
         String containing CSV template
     """
     from .config import (
-        get_csv_template_headers,
         ENVIRONMENTS,
-        VALID_STATUS_VALUES,
         VALID_PATCH_MODES,
+        VALID_STATUS_VALUES,
+        get_csv_template_headers,
     )
 
     headers = get_csv_template_headers()

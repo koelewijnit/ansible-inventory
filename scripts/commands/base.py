@@ -4,10 +4,10 @@
 This module contains the base classes that all commands inherit from.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional
-import logging
 
 
 class BaseCommand(ABC):
