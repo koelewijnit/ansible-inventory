@@ -26,7 +26,7 @@ data:
     - status
     - cname
     - instance
-    - datacenter
+    - site_code
     - ssl_port
     - application_service
     - product_id

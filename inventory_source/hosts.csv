@@ -1,1 +1,1 @@
-hostname,cname,environment,group_path,application_service,product_id,batch_number,patch_mode,dashboard_group,primary_application,function,location,instance,ssl_port,status,decommission_date
+hostname,cname,environment,group_path,application_service,product_id,batch_number,patch_mode,dashboard_group,primary_application,function,site_code,instance,ssl_port,status,decommission_date

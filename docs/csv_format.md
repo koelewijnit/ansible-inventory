@@ -9,7 +9,7 @@ The source file `inventory_source/hosts.csv` defines hosts. Required columns are
 | `status` | `active` or `decommissioned` |
 | `cname` | DNS alias (optional) |
 | `instance` | Instance number (optional) |
-| `datacenter` | Physical location |
+| `site_code` | Physical location |
 | `ssl_port` | HTTPS port |
 | `application_service` | Functional group, e.g. `web` |
 | `product_id` | Product identifier |

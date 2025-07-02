@@ -254,7 +254,7 @@ class HostManager:
                     "status",
                     "application_service",
                     "product_id",
-                    "location",
+                    "site_code",
                     "instance",
                     "batch_number",
                     "patch_mode",

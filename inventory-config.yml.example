@@ -29,7 +29,7 @@ data:
     - status           # Required: Host status (active/decommissioned)
     - cname            # Optional when using hostname as inventory_key, Required when using cname as inventory_key
     - instance         # Optional: Instance number
-    - datacenter       # Optional: Datacenter/location code
+    - site_code       # Optional: Datacenter/location code
     - ssl_port         # Optional: SSL port number
     - application_service  # Optional: Service type
     - product_id       # Optional: Product identifier (supports comma-separated values for multiple products)
