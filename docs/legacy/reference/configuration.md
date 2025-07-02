@@ -72,7 +72,7 @@ data:
     - status           # Required
     - cname            # Optional when using hostname as inventory_key, Required when using cname as inventory_key
     - instance         # Optional
-    - datacenter       # Optional
+    - site_code       # Optional
     # ... add your custom fields
 ```
 
@@ -116,7 +116,7 @@ This allows you to:
 The system supports multiple products per host by using comma-separated values in the `product_id` field:
 
 ```csv
-hostname,environment,status,cname,instance,datacenter,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
+hostname,environment,status,cname,instance,site_code,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
 idm01-prd,production,active,idm01.company.com,1,datacenter-east,636,identity_management,"edirectory,netiq_idm",NetIQ IDM,directory,1,manual,identity-servers,
 web01-prd,production,active,web01.company.com,1,datacenter-east,443,web_server,nginx,nginx,frontend,1,auto,web-servers,
 ```

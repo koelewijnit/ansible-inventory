@@ -21,7 +21,7 @@ git push origin main
 ## 📝 **CSV Format (Required Fields)**
 
 ```csv
-hostname,environment,status,cname,instance,datacenter,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
+hostname,environment,status,cname,instance,site_code,ssl_port,application_service,product_id,primary_application,function,batch_number,patch_mode,dashboard_group,decommission_date
 prod-web-01,production,active,,1,us-east-1,443,web,webapp,WebApp,frontend,1,auto,Web,
 ```
 

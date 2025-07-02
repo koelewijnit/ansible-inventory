@@ -241,7 +241,7 @@ def get_csv_template_headers() -> List[str]:
     """Get CSV template headers from configuration."""
     return _config.get("data", {}).get("csv_template_headers", [
         "hostname", "environment", "status", "cname", "instance",
-        "datacenter", "ssl_port", "application_service", "product_id",
+        "site_code", "ssl_port", "application_service", "product_id",
         "primary_application", "function", "batch_number", "patch_mode",
         "dashboard_group", "decommission_date", "notes", "ansible_tags"
     ])

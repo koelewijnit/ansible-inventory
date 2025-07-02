@@ -20,7 +20,7 @@ class Host:
     hostname: Optional[str] = None
     application_service: Optional[str] = None
     product_id: Optional[str] = None
-    datacenter: Optional[str] = None
+    site_code: Optional[str] = None
     instance: Optional[str] = None
     batch_number: Optional[str] = None
     patch_mode: Optional[str] = None
@@ -115,7 +115,7 @@ class Host:
         for field_name in [
             "application_service",
             "product_id",
-            "datacenter",
+            "site_code",
             "instance",
             "batch_number",
             "patch_mode",
@@ -223,7 +223,7 @@ class Host:
             "status": self.status,
             "application_service": self.application_service or "",
             "product_id": self.product_id or "",
-            "datacenter": self.datacenter or "",
+            "site_code": self.site_code or "",
             "instance": self.instance or "",
             "batch_number": self.batch_number or "",
             "patch_mode": self.patch_mode or "",
@@ -247,7 +247,7 @@ class Host:
             "status",
             "application_service",
             "product_id",
-            "datacenter",
+            "site_code",
             "instance",
             "batch_number",
             "patch_mode",

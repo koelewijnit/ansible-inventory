@@ -154,7 +154,7 @@ class InventoryManager:
                 "primary": host.get_primary_product_id() or "",
                 "count": len(host.get_product_ids()),
             },
-            "datacenter": host.datacenter or "",
+            "site_code": host.site_code or "",
             "instance": host.instance or "",
             "status": host.status,
             "cmdb_discovery": {
@@ -217,12 +217,12 @@ class InventoryManager:
                 for prod_group in product_groups:
                     inventory[prod_group]["hosts"][host_key] = None
 
-            # Add datacenter group if available
-            if host.datacenter:
-                datacenter_group = (
-                    f"datacenter_{host.datacenter.lower().replace('-', '_')}"
+            # Add site_code group if available
+            if host.site_code:
+                site_group = (
+                    f"site_{host.site_code.lower().replace('-', '_')}"
                 )
-                inventory[datacenter_group]["hosts"][host_key] = None
+                inventory[site_group]["hosts"][host_key] = None
 
         return dict(inventory)
 
