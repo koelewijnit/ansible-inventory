@@ -1,13 +1,11 @@
 # Contributing
 
-We welcome contributions. Please follow these steps:
+We welcome merge requests. Please:
 
-1. Fork the repository and create a feature branch.
-1. Run `pre-commit` before committing.
-1. Ensure tests pass with `pytest`.
-1. Open a pull request with a clear description.
+1. Create a feature branch.
+2. Run `pre-commit` and `pytest` locally.
+3. Follow Black formatting (line length 88).
+4. Include PEP 257 docstrings for public functions.
+5. Describe changes clearly in the pull request.
 
-Style notes:
-
-- Python code uses Black formatting with 88 character lines.
-- Write docstrings for all public functions.
+See [ci.md](ci.md) for pipeline expectations.
