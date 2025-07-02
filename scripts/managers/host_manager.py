@@ -14,14 +14,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core import CSV_FILE as DEFAULT_CSV_FILE
-from core import get_logger
-from core.config import PROJECT_ROOT
-from core.models import InventoryConfig
 
+# Ensure sibling modules are importable when this file is imported outside of
+# the `scripts` directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from core import CSV_FILE as DEFAULT_CSV_FILE  # noqa: E402
+from core import get_logger  # noqa: E402
+from core.config import PROJECT_ROOT  # noqa: E402
+from core.models import InventoryConfig  # noqa: E402
 
 
 class HostManager:
@@ -96,8 +99,8 @@ class HostManager:
         # Find the host
         host_found = False
         for host in hosts:
-            if host["hostname"] == hostname:
-                if host["status"] == "decommissioned":
+            if host.get("hostname") == hostname:
+                if host.get("status") == "decommissioned":
                     self.logger.warning(f"Host {hostname} is already decommissioned")
                     return False
 
@@ -143,14 +146,16 @@ class HostManager:
         expired_hosts = []
 
         for host in hosts:
-            if host["status"] != "decommissioned" or not host.get("decommission_date"):
+            if host.get("status") != "decommissioned" or not host.get(
+                "decommission_date"
+            ):
                 continue
 
             try:
                 decommission_date = datetime.strptime(
                     host["decommission_date"], "%Y-%m-%d"
                 )
-                environment = host["environment"]
+                environment = host.get("environment")
 
                 # Use override or environment-specific grace period
                 grace_days = grace_days_override or self.config.grace_periods.get(
@@ -211,7 +216,7 @@ class HostManager:
         # Perform cleanup
         cleaned_count = 0
         for host in expired_hosts:
-            hostname = host["hostname"]
+            hostname = host.get("hostname")
 
             # Remove host_vars file
             host_var_file = self.config.host_vars_dir / f"{hostname}.yml"
@@ -223,9 +228,9 @@ class HostManager:
 
         # Remove from CSV
         all_hosts = self.load_hosts_from_csv_raw()
-        expired_hostnames = {host["hostname"] for host in expired_hosts}
+        expired_hostnames = {host.get("hostname") for host in expired_hosts}
         remaining_hosts = [
-            h for h in all_hosts if h["hostname"] not in expired_hostnames
+            h for h in all_hosts if h.get("hostname") not in expired_hostnames
         ]
         self.save_hosts_to_csv(remaining_hosts)
 

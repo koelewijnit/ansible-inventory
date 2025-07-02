@@ -10,14 +10,16 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from core import get_logger
-from managers.validation_manager import ValidationManager
-
-from .base import BaseCommand, CommandResult
-
+# Ensure sibling modules are importable when imported outside the `scripts`
+# directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from core import get_logger  # noqa: E402
+from managers.validation_manager import ValidationManager  # noqa: E402
+
+from .base import BaseCommand, CommandResult  # noqa: E402
 
 
 class HealthCommand(BaseCommand):

@@ -15,26 +15,32 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from core import CSV_FILE as DEFAULT_CSV_FILE
-from core import (
+
+# Ensure sibling modules are importable when imported outside of the `scripts`
+# directory
+SCRIPT_DIR = Path(__file__).parent.parent.absolute()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from core import (  # noqa: E402
+    CSV_FILE as DEFAULT_CSV_FILE,
     DEFAULT_SUPPORT_GROUP,
     HOST_VARS_HEADER,
     ensure_directory_exists,
     get_logger,
     load_csv_data,
-)
-from core.models import Host, InventoryConfig, InventoryStats
-
-SCRIPT_DIR = Path(__file__).parent.parent.absolute()
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+)  # noqa: E402
+from core.models import Host, InventoryConfig, InventoryStats  # noqa: E402
 
 
 class InventoryManager:
     """Manages core inventory operations and file generation."""
 
     def __init__(
-        self, csv_file: Optional[Path] = None, logger: Optional[Any] = None, inventory_key: str = "hostname"
+        self,
+        csv_file: Optional[Path] = None,
+        logger: Optional[Any] = None,
+        inventory_key: str = "hostname",
     ) -> None:
         self.config = InventoryConfig.create_default(inventory_key=inventory_key)
         self.csv_file: Path = csv_file if csv_file is not None else DEFAULT_CSV_FILE
@@ -62,7 +68,7 @@ class InventoryManager:
         csv_data = load_csv_data(
             self.csv_file,
             required_fields=required_fields,
-            inventory_key=self.config.inventory_key
+            inventory_key=self.config.inventory_key,
         )
         hosts: List[Host] = []
 
@@ -145,7 +151,7 @@ class InventoryManager:
             "products": {
                 "installed": host.get_product_ids(),
                 "primary": host.get_primary_product_id() or "",
-                "count": len(host.get_product_ids())
+                "count": len(host.get_product_ids()),
             },
             "datacenter": host.datacenter or "",
             "instance": host.instance or "",
@@ -212,7 +218,9 @@ class InventoryManager:
 
             # Add datacenter group if available
             if host.datacenter:
-                datacenter_group = f"datacenter_{host.datacenter.lower().replace('-', '_')}"
+                datacenter_group = (
+                    f"datacenter_{host.datacenter.lower().replace('-', '_')}"
+                )
                 inventory[datacenter_group]["hosts"][host_key] = None
 
         return dict(inventory)

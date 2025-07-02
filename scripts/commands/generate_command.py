@@ -10,14 +10,16 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from core import get_logger
-from managers.inventory_manager import InventoryManager
-
-from .base import BaseCommand, CommandResult
-
+# Ensure sibling modules are importable when imported outside the `scripts`
+# directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from core import get_logger  # noqa: E402
+from managers.inventory_manager import InventoryManager  # noqa: E402
+
+from .base import BaseCommand, CommandResult  # noqa: E402
 
 
 class GenerateCommand(BaseCommand):
@@ -72,7 +74,7 @@ class GenerateCommand(BaseCommand):
             inventory_manager = InventoryManager(
                 self.csv_file,
                 self.logger,
-                inventory_key=getattr(args, 'inventory_key', 'hostname')
+                inventory_key=getattr(args, "inventory_key", "hostname"),
             )
 
             if args.dry_run:
@@ -100,14 +102,14 @@ class GenerateCommand(BaseCommand):
                     "inventory_dir": str(args.output_dir),
                     "host_vars_dir": str(args.host_vars_dir),
                 },
-                "inventory_key": getattr(args, 'inventory_key', 'hostname'),
+                "inventory_key": getattr(args, "inventory_key", "hostname"),
             }
 
             return CommandResult(
                 success=True,
                 data=result_data,
                 message="✅ Generated inventories in {} using {} as inventory key".format(
-                    args.output_dir, getattr(args, 'inventory_key', 'hostname')
+                    args.output_dir, getattr(args, "inventory_key", "hostname")
                 ),
             ).to_dict()
 
@@ -121,7 +123,9 @@ class GenerateCommand(BaseCommand):
             self.logger.error(error_msg)
             return CommandResult(success=False, error=error_msg).to_dict()
 
-    def _dry_run_generate(self, args: Any, inventory_manager: InventoryManager) -> Dict[str, Any]:
+    def _dry_run_generate(
+        self, args: Any, inventory_manager: InventoryManager
+    ) -> Dict[str, Any]:
         """Perform a dry run to show what would be generated."""
         try:
             # Load hosts to show what would be processed
