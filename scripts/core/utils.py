@@ -707,7 +707,7 @@ def get_csv_template() -> str:
         "monitoring,mon,Monitoring,infra,4,manual,Monitoring,\n\n"
         "# Required fields: hostname, environment, status\n"
         "# Optional fields: all others\n"
-        "# Data types: instance, batch_number, and ssl_port must be integers\n"
+        "# Data types: instance, batch_number, and ssl_port must be integers (instance should be plain like 1,2,3)\n"
         f"# Status values: {', '.join(VALID_STATUS_VALUES)}\n"
         f"# Environment values: {', '.join(ENVIRONMENTS)}\n"
         f"# Patch modes: {', '.join(VALID_PATCH_MODES)}\n"

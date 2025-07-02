@@ -25,6 +25,8 @@ hostname,environment,status,cname,instance,location,ssl_port,application_service
 prod-web-01,production,active,,1,us-east-1,443,web,webapp,WebApp,frontend,1,auto,Web,
 ```
 
+Use **plain integers** (`1`, `2`, `3`, ...) in the `instance` column.
+
 **Required:** `hostname`, `environment`, `status`
 
 ## 🔧 **Essential Commands**

@@ -134,7 +134,9 @@ Your `inventory_source/hosts.csv` should include these columns:
 | `patch_mode` | Patching mode | `manual`, `auto` |
 | `ansible_tags` | Comma-separated list of custom Ansible tags | `web, database, critical` |
 
-Additional fields for CMDB integration: `primary_application`, `function`, `dashboard_group`, `ssl_port`, `cname`, `decommission_date`, `notes`
+Additional fields for CMDB integration: `instance`, `primary_application`, `function`, `dashboard_group`, `ssl_port`, `cname`, `decommission_date`, `notes`
+
+Use **plain integers** (`1`, `2`, `3`, ...) in the `instance` column.
 
 ## 🎯 **Group Targeting**
 
