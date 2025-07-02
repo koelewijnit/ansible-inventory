@@ -9,7 +9,7 @@ import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from scripts.managers.host_manager import HostManager
+from scripts.managers.host_manager import HostManager  # noqa: E402
 
 
 class TestHostManager(unittest.TestCase):
