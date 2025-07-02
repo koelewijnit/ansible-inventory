@@ -14,14 +14,17 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from core import get_logger
-from core.config import CSV_FILE
-from core.models import InventoryConfig, ValidationResult
-from managers.inventory_manager import InventoryManager
 
+# Ensure sibling modules are importable when imported outside of the `scripts`
+# directory
 SCRIPT_DIR = Path(__file__).parent.parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from core import get_logger  # noqa: E402
+from core.config import CSV_FILE  # noqa: E402
+from core.models import InventoryConfig, ValidationResult  # noqa: E402
+from managers.inventory_manager import InventoryManager  # noqa: E402
 
 
 class ValidationManager:
@@ -164,8 +167,8 @@ class ValidationManager:
             hosts = self.inventory_manager.load_hosts()
 
             # Check for duplicate hostnames
-            hostnames = [host.hostname for host in hosts]
-            duplicates = set([name for name in hostnames if hostnames.count(name) > 1])
+            hostnames = [host.hostname for host in hosts if host.hostname]
+            duplicates = {name for name in hostnames if hostnames.count(name) > 1}
             if duplicates:
                 validation.add_error(
                     f"Duplicate hostnames found: {', '.join(duplicates)}"

@@ -16,13 +16,14 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from commands.base import BaseCommand
-from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging
-
-# Add current directory to path for imports
+# Add current directory to path for imports before local imports
 SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from commands.base import BaseCommand  # noqa: E402
+from core import CSV_FILE, LOG_LEVEL, VERSION, get_logger, setup_logging  # noqa: E402
+
 
 class CommandRegistry:
     """Registry for all available CLI commands."""
@@ -95,10 +96,6 @@ Examples:
   %(prog)s lifecycle cleanup --dry-run
 
   # Import existing inventories
-  
-
-  
-
 For more information, see the documentation at:
 https://github.com/your-org/inventory-structure
             """,
@@ -142,7 +139,7 @@ https://github.com/your-org/inventory-structure
                 command_parser = subparsers.add_parser(
                     command_name, help="Host lifecycle management"
                 )
-            
+
             elif command_name == "generate":
                 command_parser = subparsers.add_parser(
                     command_name, help="Generate inventory files from CSV"

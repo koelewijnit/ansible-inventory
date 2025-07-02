@@ -10,7 +10,6 @@ rules:
   # Comments - allow comments without space
   comments:
     min-spaces-from-content: 1
-    min-spaces-after-comment: 1
 
   # Indentation - 2 spaces for YAML
   indentation:
@@ -40,24 +39,15 @@ rules:
   brackets:
     min-spaces-inside: 0
     max-spaces-inside: 0
-    min-spaces-after-opening: -1
-    max-spaces-after-opening: -1
-    min-spaces-before-closing: -1
-    max-spaces-before-closing: -1
 
   # Braces (dictionaries)
   braces:
     min-spaces-inside: 0
     max-spaces-inside: 1
-    min-spaces-after-opening: -1
-    max-spaces-after-opening: -1
-    min-spaces-before-closing: -1
-    max-spaces-before-closing: -1
 
   # Colons
   colons:
     max-spaces-before: 0
-    min-spaces-after: 1
     max-spaces-after: 1
 
   # Commas
