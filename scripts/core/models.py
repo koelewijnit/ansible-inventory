@@ -8,6 +8,7 @@ safety, validation, and cleaner code organization.
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 
 
@@ -98,11 +99,9 @@ class Host:
                 )
 
         if self.instance:
-            try:
-                int(self.instance)
-            except ValueError:
+            if not re.fullmatch(r"[1-9]\d*", self.instance):
                 raise ValueError(
-                    f"Invalid instance: {self.instance}. Must be an integer."
+                    f"Invalid instance: {self.instance}. Must be a plain integer without leading zeros."
                 )
 
         # Clean up string fields
