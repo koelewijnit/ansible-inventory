@@ -292,6 +292,20 @@ class InventoryManager:
                 default_support_group = config.get("cmdb", {}).get("default_support_group", "")
                 host_vars["support_group"] = default_support_group
 
+        # Optionally append or prepend short cname to function field
+        hosts_config = config.get("hosts", {})
+        append_short_cname = hosts_config.get("function_append_short_cname", False)
+        cname_position = hosts_config.get("function_short_cname_position", "back")
+        if append_short_cname and "function" in host_vars and "cname" in host_vars:
+            function_val = host_vars["function"]
+            cname_val = host_vars["cname"]
+            short_cname = cname_val.split(".")[0] if cname_val else ""
+            if function_val and short_cname and short_cname not in function_val:
+                if cname_position == "front":
+                    host_vars["function"] = f"{short_cname} - {function_val}"
+                else:
+                    host_vars["function"] = f"{function_val} ({short_cname})"
+
         # Get all configured fields to exclude from metadata
         all_configured_fields = set(host_var_fields)
         all_configured_fields.update(field_mappings.get("group_references", []))

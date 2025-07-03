@@ -120,6 +120,10 @@ hosts:
     acceptance: 30
     test: 14
     development: 7
+
+  # Function field customization
+  function_append_short_cname: true  # If true, append/prepend short cname to the function field in host_vars
+  function_short_cname_position: back  # Options: 'back' (default, e.g. 'function (shortcname)') or 'front' (e.g. 'shortcname - function')
 ```
 
 **Key Settings:**
@@ -127,6 +131,8 @@ hosts:
 - `grace_periods`: Days to keep decommissioned hosts before cleanup
 - `valid_status_values`: Allowed host status values
 - `valid_patch_modes`: Allowed patch mode values
+- `function_append_short_cname`: If true, the short cname (first part of the cname before the first dot) will be added to the function field in each host_vars file.
+- `function_short_cname_position`: Controls whether the short cname is appended to the end (`back`, e.g. `function (shortcname)`) or prepended to the front (`front`, e.g. `shortcname - function`).
 
 ### Group Naming Patterns
 

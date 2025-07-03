@@ -79,6 +79,10 @@ hosts:
     test: 14
     development: 7
 
+  # Function field customization
+  function_append_short_cname: true
+  function_short_cname_position: back  # or 'front'
+
 # Group naming patterns
 groups:
   prefixes:
