@@ -10,15 +10,29 @@ The CSV file should be located at `inventory_source/hosts.csv` by default, but c
 
 | Field | Required | Description | Example |
 |-------|----------|-------------|---------|
-| `hostname` | ❌ | Hostname (required if not using cname as inventory key) | `prd-web-01` |
+| `hostname` | ⚠️ | **Primary host identifier** (required if using hostname as inventory key) | `prd-web-01` |
+| `cname` | ⚠️ | **Canonical name** (required if using cname as inventory key) | `web01.example.com` |
 | `environment` | ✅ | Environment name | `production`, `development`, `test`, `acceptance` |
 | `status` | ✅ | Host status | `active`, `decommissioned` |
+
+### Hostname vs CNAME Relationship
+
+**Important:** You must provide **at least one** of `hostname` or `cname`, but you can provide both:
+
+- **If using `hostname` as inventory key** (default): `hostname` is required, `cname` is optional
+- **If using `cname` as inventory key**: `cname` is required, `hostname` is optional
+- **Best practice**: Provide both for maximum flexibility
+
+**Configuration:** Set your preference in `inventory-config.yml`:
+```yaml
+hosts:
+  inventory_key: "hostname"  # or "cname"
+```
 
 ## Optional Fields
 
 | Field | Required | Description | Example |
 |-------|----------|-------------|---------|
-| `cname` | ❌ | Canonical name (required if using cname as inventory key) | `web01.example.com` |
 | `instance` | ❌ | Instance number | `1`, `2`, `3` |
 | `site_code` | ❌ | Datacenter/location code | `use1`, `usw2`, `euw1` |
 | `ssl_port` | ❌ | SSL port number | `443`, `8443` |
@@ -105,7 +119,7 @@ api01,production,backend,medium,7
 ### Required Field Validation
 - `environment`: Must be one of `production`, `development`, `test`, `acceptance`
 - `status`: Must be one of `active`, `decommissioned`
-- At least one of `hostname` or `cname` must be provided
+- **At least one of `hostname` or `cname` must be provided** (based on inventory key configuration)
 
 ### Data Type Validation
 - `ssl_port`: Must be an integer
@@ -626,10 +640,11 @@ python3 scripts/ansible_inventory_cli.py validate
 ## Troubleshooting
 
 ### Common Issues
-1. **Missing required fields**: Ensure hostname, environment, and status are present
+1. **Missing required fields**: Ensure environment and status are present, plus either hostname or cname (based on inventory key)
 2. **Invalid data types**: Check integer fields for non-numeric values
 3. **Invalid status/environment**: Use only allowed values
-4. **Duplicate hostnames**: Ensure unique hostnames per environment
+4. **Duplicate identifiers**: Ensure unique hostname/cname per environment (based on inventory key)
+5. **Wrong inventory key**: Check that you're providing the field specified in `inventory_key` configuration
 
 ### Validation Errors
 - Check the validation output for specific error messages
