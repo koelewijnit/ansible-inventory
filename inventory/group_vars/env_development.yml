@@ -1,2 +1,5 @@
----
-# Group variables for development environment 
+# inventory/group_vars/env_development.yml
+# Development environment-specific policies and configurations
+
+# Environment identification
+environment_tag: "development"

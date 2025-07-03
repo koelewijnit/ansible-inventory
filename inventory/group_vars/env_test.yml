@@ -1,2 +1,5 @@
----
-# Group variables for test environment 
+# inventory/group_vars/env_test.yml
+# Test environment-specific policies and configurations
+
+# Environment identification
+environment_tag: "test" 
