@@ -273,13 +273,15 @@ field_mappings:
     - cmdb_discovery.classification
   
   group_references:
-    - application_service
-    - product_1
-    - product_2
-    - product_3
-    - product_4
-    - site_code
-    - dashboard_group
+    - application_service  # Creates app_{value} groups
+    - product_1           # Creates product_{value} groups
+    - product_2           # Creates product_{value} groups  
+    - product_3           # Creates product_{value} groups
+    - product_4           # Creates product_{value} groups
+    - product_5           # Creates product_{value} groups (unlimited)
+    - product_6           # Creates product_{value} groups (unlimited)
+    - site_code          # Creates site_{value} groups
+    - dashboard_group    # Creates dashboard_{value} groups
 ```
 
 **Field Mapping Options:**
