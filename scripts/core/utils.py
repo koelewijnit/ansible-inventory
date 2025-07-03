@@ -149,7 +149,7 @@ def load_csv_data(
                 cleaned_row = {}
                 for k, v in row.items():
                     if k == "product_id" and v:
-                        cleaned_row[k] = [item.strip() for item in v.split(',')]
+                        cleaned_row[k] = ",".join(item.strip() for item in v.split(","))
                     else:
                         cleaned_row[k] = v.strip() if isinstance(v, str) and v else ""
                 hosts.append(cleaned_row)

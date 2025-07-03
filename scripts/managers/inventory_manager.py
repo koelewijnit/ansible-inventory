@@ -83,7 +83,9 @@ class InventoryManager:
                     if env_info:
                         # Replace the environment code with the full name
                         row_data["environment"] = env_info["name"]
-                        self.logger.debug(f"Mapped environment code '{env_code}' to '{env_info['name']}'")
+                        self.logger.debug(
+                            f"Mapped environment code '{env_code}' to '{env_info['name']}'"
+                        )
 
                 host = Host.from_csv_row(row_data)
                 if environment and host.environment != environment:
@@ -179,7 +181,7 @@ class InventoryManager:
 
             # Initialize GroupVarsManager
             group_vars_manager = GroupVarsManager(logger=self.logger)
-            
+
             # Clean up orphaned host_vars files before generating new ones
             orphaned_count = self.cleanup_orphaned_host_vars(hosts, dry_run)
 
@@ -200,10 +202,16 @@ class InventoryManager:
                     inventory_filename = f"{env}.yml"
                 try:
                     self.logger.info(f"Processing environment: {env_name}")
-                    env_hosts = [h for h in hosts if h.environment == env or h.environment == env_name]
+                    env_hosts = [
+                        h
+                        for h in hosts
+                        if h.environment == env or h.environment == env_name
+                    ]
 
                     if not env_hosts:
-                        self.logger.warning(f"No hosts found for environment: {env_name}")
+                        self.logger.warning(
+                            f"No hosts found for environment: {env_name}"
+                        )
                         continue
 
                     if dry_run:
@@ -213,13 +221,16 @@ class InventoryManager:
                         )
                     else:
                         # Generate the actual inventory file
-                        inventory_file = self._generate_inventory_file(env_name, env_hosts, inventory_filename)
+                        inventory_file = self._generate_inventory_file(
+                            env_name, env_hosts, inventory_filename
+                        )
                         generated_files.append(str(inventory_file))
                         self.logger.info(f"Generated inventory file: {inventory_file}")
 
                 except Exception as e:
                     self.logger.error(
-                        f"Failed to generate inventory for {env_name}: {e}", exc_info=True
+                        f"Failed to generate inventory for {env_name}: {e}",
+                        exc_info=True,
                     )
                     # Continue with other environments
                     continue
@@ -261,7 +272,7 @@ class InventoryManager:
 
         # Build host_vars with only designated fields
         host_vars: Dict[str, Any] = {}
-        
+
         # Add fields designated as host_vars
         for field in host_var_fields:
             value = getattr(host, field, None)
@@ -280,7 +291,7 @@ class InventoryManager:
         all_configured_fields.update(field_mappings.get("group_references", []))
         # Also exclude computed fields and internal fields
         all_configured_fields.update(["ansible_tags"])
-        
+
         # Only add metadata fields that aren't already configured elsewhere
         for key, value in host.metadata.items():
             if key not in all_configured_fields:
@@ -381,7 +392,12 @@ class InventoryManager:
             f.write("\n")
             yaml.dump(filtered_inventory, f, default_flow_style=False, sort_keys=True)
 
-    def _generate_inventory_file(self, environment: str, hosts: List[Host], inventory_filename: str = None) -> Path:
+    def _generate_inventory_file(
+        self,
+        environment: str,
+        hosts: List[Host],
+        inventory_filename: Optional[str] = None,
+    ) -> Path:
         """Generate inventory file for a specific environment.
 
         Args:

@@ -289,10 +289,10 @@ EXAMPLE_COMMANDS = _config.get("examples", {}).get(
 # New configuration utility functions
 def get_csv_template_headers() -> List[str]:
     """Get CSV template headers from configuration.
-    
+
     Includes dynamic product columns (product_1, product_2, etc.) to support
     flexible product definitions where hosts can have 1 to N products.
-    
+
     Returns:
         List of CSV headers in logical order
     """
@@ -300,7 +300,7 @@ def get_csv_template_headers() -> List[str]:
         "csv_template_headers",
         [
             "hostname",
-            "environment", 
+            "environment",
             "status",
             "cname",
             "instance",
@@ -506,5 +506,8 @@ def get_environment_info_from_code(code: str) -> Optional[Dict[str, str]]:
     mapping = config.get("location_codes", {})
     entry = mapping.get(code.upper())
     if entry:
-        return {"name": entry.get("name"), "inventory_file": entry.get("inventory_file")}
+        return {
+            "name": entry.get("name"),
+            "inventory_file": entry.get("inventory_file"),
+        }
     return None

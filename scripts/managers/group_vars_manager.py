@@ -24,16 +24,20 @@ class GroupVarsManager:
         self.config = load_config()
         self.logger = logger if logger else get_logger(__name__)
         self.group_vars_dir = Path(self.config["paths"]["group_vars"])
-        
+
         # Load protected files list from config
-        self.protected_files = self.config.get("group_vars", {}).get("protected_files", [])
-        
+        self.protected_files = self.config.get("group_vars", {}).get(
+            "protected_files", []
+        )
+
         self.logger.info("GroupVarsManager initialized")
 
-    def cleanup_orphaned_group_vars(self, hosts: List[Host], dry_run: bool = False) -> int:
+    def cleanup_orphaned_group_vars(
+        self, hosts: List[Host], dry_run: bool = False
+    ) -> int:
         """Removes group_vars files that are not in the protected list and are not referenced by hosts."""
         self.logger.info("Starting orphaned group_vars cleanup")
-        
+
         # Collect all group names that should exist based on host data
         required_group_names = set()
         for host in hosts:
@@ -52,31 +56,46 @@ class GroupVarsManager:
         orphaned_count = 0
         for file_path in self.group_vars_dir.glob("*.yml"):
             file_name = file_path.name
-            
+
             if file_name in self.protected_files:
-                self.logger.debug(f"Skipping protected group_vars file during cleanup: {file_path}")
+                self.logger.debug(
+                    f"Skipping protected group_vars file during cleanup: {file_path}"
+                )
                 continue
 
             if file_name not in required_group_names:
                 if dry_run:
-                    self.logger.info(f"[DRY RUN] Would remove orphaned group_vars: {file_path}")
+                    self.logger.info(
+                        f"[DRY RUN] Would remove orphaned group_vars: {file_path}"
+                    )
                 else:
                     try:
                         file_path.unlink()
                         self.logger.info(f"Removed orphaned group_vars: {file_path}")
                     except Exception as e:
-                        self.logger.error(f"Failed to remove orphaned file {file_path}: {e}")
+                        self.logger.error(
+                            f"Failed to remove orphaned file {file_path}: {e}"
+                        )
                 orphaned_count += 1
-        
+
         # Clean up old subdirectory structure if it exists (from previous auto-generation)
-        for subdir in ["sites", "applications", "dashboards", "products", "functions", "templates"]:
+        for subdir in [
+            "sites",
+            "applications",
+            "dashboards",
+            "products",
+            "functions",
+            "templates",
+        ]:
             subdir_path = self.group_vars_dir / subdir
             if subdir_path.exists() and subdir_path.is_dir():
                 if dry_run:
-                    self.logger.info(f"[DRY RUN] Would remove old subdirectory: {subdir_path}")
+                    self.logger.info(
+                        f"[DRY RUN] Would remove old subdirectory: {subdir_path}"
+                    )
                 else:
                     shutil.rmtree(subdir_path)
                     self.logger.info(f"Removed old subdirectory: {subdir_path}")
                 orphaned_count += 1
-        
+
         return orphaned_count

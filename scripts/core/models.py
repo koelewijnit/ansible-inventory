@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class Host:
     """Structured host data model with automatic validation.
-    
+
     Supports dynamic product columns (product_1, product_2, etc.) for flexible
     product definitions. Each host can have 1 to N products as needed.
     """
@@ -173,10 +173,10 @@ class Host:
 
     def get_product_ids(self) -> List[str]:
         """Return a list of product IDs for this host.
-        
+
         Returns all non-empty product values from dynamic product columns.
         Supports flexible product definitions using product_1, product_2, etc.
-        
+
         Returns:
             List of product IDs (e.g., ["web", "analytics", "monitoring"])
         """
@@ -184,10 +184,10 @@ class Host:
 
     def get_product_group_names(self) -> List[str]:
         """Return all product group names for inventory.
-        
+
         Creates group names in the format 'product_{product_id}' for each
         product associated with this host.
-        
+
         Returns:
             List of product group names (e.g., ["product_web", "product_analytics"])
         """
@@ -196,10 +196,10 @@ class Host:
 
     def has_product(self, product_id: str) -> bool:
         """Check if host has a specific product installed.
-        
+
         Args:
             product_id: The product ID to check for
-            
+
         Returns:
             True if the host has the specified product, False otherwise
         """
@@ -207,10 +207,10 @@ class Host:
 
     def get_primary_product_id(self) -> Optional[str]:
         """Get the primary (first) product ID for this host.
-        
+
         Returns the first product in the list, which is typically considered
         the primary product for the host.
-        
+
         Returns:
             The primary product ID, or None if no products are defined
         """
@@ -219,26 +219,26 @@ class Host:
 
     def validate_products(self) -> List[str]:
         """Validate product configuration and return any issues.
-        
+
         Checks for:
         - At least one product is defined
         - No duplicate products
         - Product column naming follows expected pattern
-        
+
         Returns:
             List of validation error messages (empty if valid)
         """
         issues = []
-        
+
         # Check if host has at least one product
         if not self.get_product_ids():
             issues.append(f"Host {self.hostname} has no products defined")
-        
+
         # Check for duplicate products
         products = self.get_product_ids()
         if len(products) != len(set(products)):
             issues.append(f"Host {self.hostname} has duplicate products: {products}")
-        
+
         # Check for gaps in product column numbering
         product_keys = sorted(self.products.keys())
         if product_keys:
@@ -251,11 +251,11 @@ class Host:
                         numbers.append(num)
                     except ValueError:
                         issues.append(f"Invalid product column name: {key}")
-            
+
             # Check for gaps in numbering
             if numbers and numbers != list(range(1, len(numbers) + 1)):
                 issues.append(f"Product columns should be sequential: {product_keys}")
-        
+
         return issues
 
     def get_inventory_key_value(self, key_type: str = "hostname") -> str:
@@ -285,7 +285,7 @@ class Host:
 
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary for CSV/YAML output.
-        
+
         Includes all dynamic product columns in the output.
         """
         result = {
@@ -305,35 +305,35 @@ class Host:
             "cname": self.cname or "",
             "ansible_tags": self.ansible_tags or "",
         }
-        
+
         # Add dynamic product columns
         result.update(self.products)
-        
+
         # Add metadata
         result.update(self.metadata)
-        
+
         return result
 
     @classmethod
     def from_csv_row(cls, row: Dict[str, str]) -> "Host":
         """Create Host from CSV row data with dynamic product column detection.
-        
+
         Automatically detects any column starting with "product" and treats it
         as a product definition. Supports flexible CSV structures where hosts
         can have 1 to N products as needed.
-        
+
         Args:
             row: Dictionary representing a CSV row
-            
+
         Returns:
             Host object with all fields populated
-            
+
         Example:
             CSV with single product:
                 {"hostname": "host1", "environment": "production", "product_1": "web"}
-            
+
             CSV with multiple products:
-                {"hostname": "host1", "environment": "production", 
+                {"hostname": "host1", "environment": "production",
                  "product_1": "web", "product_2": "analytics", "product_3": "monitoring"}
         """
         # Extract known fields
@@ -364,7 +364,7 @@ class Host:
                 clean_value = v.strip() if v is not None else None
             else:
                 clean_value = v
-                
+
             # Handle dynamic product columns
             if k.startswith("product"):
                 if clean_value:
@@ -381,8 +381,8 @@ class Host:
         # Add products to host_data
         host_data["products"] = products
         host_data["metadata"] = metadata
-        
-        return cls(**host_data)
+
+        return cls(**host_data)  # type: ignore[unreachable]
 
 
 @dataclass
