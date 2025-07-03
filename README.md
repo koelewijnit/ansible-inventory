@@ -1,275 +1,262 @@
 # Ansible Inventory Management System
 
-Enterprise-grade Ansible inventory management with unified CLI, automated lifecycle management, and comprehensive validation.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Ansible 2.9+](https://img.shields.io/badge/ansible-2.9+-red.svg)](https://docs.ansible.com/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 🆕 **New User? Start Here!**
+A powerful, flexible tool for managing Ansible inventories from CSV data with support for dynamic product columns, extra variables, and comprehensive lifecycle management.
 
-**Want to add a new system to the inventory?** 
-👉 **[Simple Guide: Adding New Systems](docs/reference/adding-systems.md)**
-
-This guide walks you through the complete workflow:
-1. Add system to CSV → 2. Generate inventory → 3. Commit to git → 4. Push changes
-
-## 🚀 **Quick Start**
+## 🚀 Quick Start
 
 ```bash
-# 1. Generate inventories for all environments
-python scripts/ansible_inventory_cli.py generate
+# Clone the repository
+git clone https://github.com/your-org/ansible-inventory-cli.git
+cd ansible-inventory-cli
 
-# 2. Check system health
-python scripts/ansible_inventory_cli.py health
+# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-# 3. Validate configuration
-python scripts/ansible_inventory_cli.py validate
+# Copy configuration
+cp inventory-config.yml.example inventory-config.yml
 
-# 4. Get help for any command
-python scripts/ansible_inventory_cli.py --help
+# Generate inventory from CSV
+python3 scripts/ansible_inventory_cli.py generate
 ```
 
-## ✨ **Features**
+## ✨ Key Features
 
-- **🎯 Unified CLI**: Single tool for all inventory operations
-- **📊 Health Monitoring**: Real-time health scoring with recommendations
-- **🔄 Lifecycle Management**: Automated host decommissioning and cleanup
-- **✅ Validation**: Infrastructure and configuration validation
-- **🏗️ Template Creation**: Clean repository templates
-- **📋 CSV-Driven**: Flexible CSV-based host definitions
-- **🚀 Enterprise Ready**: JSON output, logging, error handling
-- **⚡ High Performance**: Sub-second operations
+### 🔄 Dynamic Product Columns
+- **Flexible Product Definitions**: Use `product_1`, `product_2`, `product_3`, etc.
+- **Multiple Products per Host**: Hosts can belong to multiple product groups
+- **Automatic Group Creation**: Each product creates a `product_{product_id}` group
+- **No CSV Parsing Issues**: Unlike comma-separated values, no quoting problems
 
-## 📁 **Project Structure**
+### 📊 Extra Variables (Metadata)
+- **Automatic Detection**: Any CSV column not in the standard list becomes an extra variable
+- **Host Metadata**: Automatically stored in host_vars files
+- **Ansible Integration**: Accessible in playbooks and inventory queries
+- **No Configuration Required**: Works out of the box
 
+### 🏗️ Comprehensive Group Structure
+- **Application Groups**: `app_web_server`, `app_api_server`
+- **Product Groups**: `product_web`, `product_api`, `product_analytics`
+- **Environment Groups**: `env_production`, `env_development`
+- **Site Groups**: `site_use1`, `site_usw2`
+- **Dashboard Groups**: `dashboard_web_servers`
+
+### 🔧 Enterprise Features
+- **Patch Management**: Batch windows and scheduling
+- **Lifecycle Management**: Decommission date handling
+- **Health Monitoring**: System health checks
+- **Validation**: Comprehensive data validation
+- **Backup Support**: Automatic CSV backups
+
+## 📚 Documentation
+
+- **[📖 Documentation Index](docs/index.md)** - Complete documentation overview
+- **[📋 CSV Format Reference](docs/csv_format.md)** - CSV structure and columns
+- **[⚙️ Configuration Guide](docs/configuration.md)** - System configuration
+- **[🛠️ Usage Guide](docs/usage.md)** - Command reference and examples
+- **[❓ FAQ](docs/faq.md)** - Frequently asked questions
+
+## 📊 CSV Structure
+
+The system supports a flexible CSV structure:
+
+### Required Columns
+```csv
+hostname,environment,status
+prd-web-01,production,active
+dev-api-01,development,active
 ```
-ansible-inventory/
-├── inventory-config.yml            # ⚙️ Main configuration file
-├── scripts/
-│   ├── ansible_inventory_cli.py    # 🎯 Main CLI tool
-│   ├── core/
-│   │   ├── config.py               # 📋 Configuration loader
-│   │   ├── models.py               # 📊 Data models
-│   │   └── utils.py                # 🔧 Utilities
-│   ├── commands/                   # 📁 Command implementations
-│   └── managers/                   # 📁 Business logic
-├── inventory_source/
-│   └── hosts.csv                   # 📝 Host data (CSV format)
-├── inventory/                      # 📂 Generated inventories
-│   ├── group_vars/                 # 🏷️ Group variables
-│   └── host_vars/                  # 🖥️ Host variables
-└── README.md                       # 📚 This file
+
+### Full Example with Dynamic Products
+```csv
+hostname,environment,status,application_service,product_1,product_2,custom_role,monitoring_level
+prd-web-01,production,active,web_server,web,analytics,load_balancer,high
+prd-api-01,production,active,api_server,api,monitoring,api_gateway,high
+prd-db-01,production,active,database_server,db,,database_server,critical
 ```
 
-## 🔧 **Installation & Setup**
+## 🛠️ Core Commands
 
-1. **Prerequisites**: Python 3.7+, PyYAML
-2. **Make executable**: `chmod +x scripts/ansible_inventory_cli.py`
-3. **Optional alias**: `alias inventory-cli='python scripts/ansible_inventory_cli.py'`
-
-## 📋 **Core Commands**
-
-### **Generate Inventories**
+### Basic Operations
 ```bash
-# Generate all environments
-python scripts/ansible_inventory_cli.py generate
+# Generate inventory
+python3 scripts/ansible_inventory_cli.py generate
 
+# Validate CSV data
+python3 scripts/ansible_inventory_cli.py validate
+
+# Check system health
+python3 scripts/ansible_inventory_cli.py health
+```
+
+### Advanced Operations
+```bash
 # Generate specific environments
-python scripts/ansible_inventory_cli.py generate --environments production test
+python3 scripts/ansible_inventory_cli.py generate --environments production test
 
-# Custom output directory
-python scripts/ansible_inventory_cli.py generate --output-dir custom_inventory
+# Use custom CSV file
+python3 scripts/ansible_inventory_cli.py --csv-file custom.csv generate
+
+# Lifecycle management
+python3 scripts/ansible_inventory_cli.py lifecycle list-expired
+python3 scripts/ansible_inventory_cli.py lifecycle cleanup
 ```
 
-### **Health Monitoring**
+## 🎯 Ansible Integration
+
+### Generated Inventory Structure
+```yaml
+# inventory/production.yml
+app_web_server:
+  children:
+    product_web: {}
+    product_analytics: {}
+  hosts:
+    prd-web-01: {}
+
+app_api_server:
+  children:
+    product_api: {}
+    product_monitoring: {}
+  hosts:
+    prd-api-01: {}
+```
+
+### Using with Ansible
 ```bash
-# Check inventory health
-python scripts/ansible_inventory_cli.py health
+# List all web servers
+ansible-inventory -i inventory/production.yml --list-hosts app_web_server
 
-# JSON output for automation
-python scripts/ansible_inventory_cli.py --output-format json health
+# Show host variables
+ansible-inventory -i inventory/production.yml --host prd-web-01
+
+# Run playbook on specific group
+ansible-playbook playbook.yml -i inventory/production.yml --limit product_web
 ```
 
-### **Infrastructure Validation**
-```bash
-# Validate structure and configuration
-python scripts/ansible_inventory_cli.py validate
-
-# Debug mode
-python scripts/ansible_inventory_cli.py --log-level DEBUG validate
+### Accessing Extra Variables in Playbooks
+```yaml
+# playbook.yml
+---
+- name: Example playbook
+  hosts: all
+  tasks:
+    - name: Show custom role
+      debug:
+        msg: "Host {{ inventory_hostname }} has custom role: {{ custom_role }}"
+    
+    - name: Show monitoring level
+      debug:
+        msg: "Host {{ inventory_hostname }} has monitoring level: {{ monitoring_level }}"
 ```
 
-### **Host Lifecycle Management**
-```bash
-# Decommission a host
-python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname server-01 --date 2025-12-31
+## 🔧 Configuration
 
-# List expired hosts
-python scripts/ansible_inventory_cli.py lifecycle list-expired
+The system is highly configurable through `inventory-config.yml`:
 
-# Cleanup expired hosts
-python scripts/ansible_inventory_cli.py lifecycle cleanup --dry-run
+```yaml
+# Example configuration
+environments:
+  supported: [production, development, test, acceptance]
+
+hosts:
+  inventory_key: "hostname"  # or "cname"
+  grace_periods:
+    production: 90
+    development: 7
+
+features:
+  patch_management: true
+  lifecycle_management: true
+  cleanup_orphaned_on_generate: true
 ```
 
-### **Template Creation**
-```bash
-# Preview template creation
-python scripts/ansible_inventory_cli.py template --preview
+## 🚀 Getting Started
 
-# Create clean template repository
-python scripts/ansible_inventory_cli.py template --force
+1. **Install Dependencies**: See [Installation Guide](docs/installation.md)
+2. **Configure System**: See [Configuration Guide](docs/configuration.md)
+3. **Prepare CSV**: See [CSV Format Reference](docs/csv_format.md)
+4. **Generate Inventory**: See [Usage Guide](docs/usage.md)
+5. **Test with Ansible**: Use generated inventory files
+
+## 📈 Use Cases
+
+### Infrastructure Management
+- **Multi-environment deployments**: Production, development, test, acceptance
+- **Product-based grouping**: Organize hosts by installed products
+- **Site-based organization**: Group by physical location
+- **Application-based targeting**: Target specific application types
+
+### Automation Workflows
+- **Patch management**: Batch-based patching schedules
+- **Monitoring setup**: Dashboard group assignments
+- **Security compliance**: Security tier classifications
+- **Backup management**: Retention period configuration
+
+### DevOps Integration
+- **CI/CD pipelines**: Automated inventory generation
+- **Configuration management**: Dynamic host configuration
+- **Monitoring integration**: Health check automation
+- **Lifecycle management**: Automated host cleanup
+
+## 🏗️ Project Structure
+
+```
+ansible-inventory-cli/
+├── docs/                          # Documentation
+│   ├── index.md                   # Main documentation index
+│   ├── csv_format.md              # CSV format reference
+│   ├── configuration.md           # Configuration guide
+│   ├── usage.md                   # Usage guide
+│   └── faq.md                     # Frequently asked questions
+├── scripts/                       # Main application
+│   ├── ansible_inventory_cli.py   # Main CLI entry point
+│   ├── core/                      # Core functionality
+│   ├── commands/                  # CLI commands
+│   └── managers/                  # Business logic managers
+├── inventory_source/              # CSV data source
+│   └── hosts.csv                  # Host definitions
+├── inventory/                     # Generated inventory
+│   ├── production.yml             # Production environment
+│   ├── development.yml            # Development environment
+│   ├── host_vars/                 # Host-specific variables
+│   └── group_vars/                # Group-specific variables
+├── inventory-config.yml           # Configuration file
+├── requirements.txt               # Python dependencies
+└── README.md                      # This file
 ```
 
-## 📊 **CSV Format**
+## 🤝 Contributing
 
-Your `inventory_source/hosts.csv` should include these columns:
+We welcome contributions! Please see our [Contributing Guide](docs/contributing.md) for details on:
+- Code style and standards
+- Testing requirements
+- Pull request process
+- Development setup
 
-| Column | Description | Example |
-|--------|-------------|---------|
-| `hostname` | Unique hostname | `prd-web-01` |
-| `environment` | Environment name | `production` |
-| `status` | Host status | `active`, `decommissioned` |
-| `application_service` | Service type | `web_server`, `database` |
-| `product_id` | Product identifier | `apache_httpd`, `postgresql` |
-| `location` | Geographic location | `us-east-1`, `europe` |
-| `batch_number` | Patch batch | `batch_1`, `batch_2` |
-| `patch_mode` | Patching mode | `manual`, `auto` |
-| `ansible_tags` | Comma-separated list of custom Ansible tags | `web, database, critical` |
+## 📞 Support
 
-Additional fields for CMDB integration: `instance`, `primary_application`, `function`, `dashboard_group`, `ssl_port`, `cname`, `decommission_date`, `notes`
+For support and questions:
+1. Check the [FAQ](docs/faq.md)
+2. Review the [documentation](docs/index.md)
+3. Search existing issues
+4. Create a new issue with details
 
-Use **plain integers** (`1`, `2`, `3`, ...) in the `instance` column.
+## 📄 License
 
-## 🎯 **Group Targeting**
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-The system generates both functional and product-specific groups:
+## 🙏 Acknowledgments
 
-### **Application Service Groups**
-Target hosts by function across all products:
-
-```bash
-# All web servers (Apache + Nginx + others)
-ansible app_web_server -i inventory/production.yml --list-hosts
-
-# All databases (PostgreSQL + MongoDB + others)
-ansible app_database -i inventory/production.yml --list-hosts
-
-# All identity management systems
-ansible app_identity_management -i inventory/production.yml --list-hosts
-```
-
-### **Product-Specific Groups**
-Target hosts by specific software:
-
-```bash
-# Only Apache HTTP servers
-ansible product_apache_httpd -i inventory/production.yml --list-hosts
-
-# Only PostgreSQL databases
-ansible product_postgresql -i inventory/production.yml --list-hosts
-
-# Only Kubernetes infrastructure
-ansible product_kubernetes -i inventory/production.yml --list-hosts
-```
-
-## 🔄 **Common Workflows**
-
-### **Daily Operations**
-```bash
-# 1. Check system health
-python scripts/ansible_inventory_cli.py health
-
-# 2. Generate updated inventories
-python scripts/ansible_inventory_cli.py generate
-
-# 3. Validate configuration
-python scripts/ansible_inventory_cli.py validate
-```
-
-### **Host Decommissioning**
-```bash
-# 1. Mark host as decommissioned
-python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2025-12-31
-
-# 2. Regenerate inventories
-python scripts/ansible_inventory_cli.py generate
-
-# 3. Verify health
-python scripts/ansible_inventory_cli.py health
-```
-
-### **Maintenance Operations**
-```bash
-# 1. Check for expired hosts
-python scripts/ansible_inventory_cli.py lifecycle list-expired
-
-# 2. Preview cleanup
-python scripts/ansible_inventory_cli.py lifecycle cleanup --dry-run
-
-# 3. Perform cleanup
-python scripts/ansible_inventory_cli.py lifecycle cleanup
-```
-
-## ⚙️ **Configuration**
-
-The system is configured through `inventory-config.yml` in the project root. This YAML file controls all aspects of the inventory management system.
-
-### **Configuration File**
-Edit `inventory-config.yml` to customize:
-- Supported environments and their codes
-- CSV headers and data validation
-- Inventory key preference (hostname vs cname)
-- Grace periods for host cleanup
-- Patch management windows
-- File paths and naming patterns
-- Display and logging settings
-
-### **Environment Variable Overrides**
-```bash
-# Override key settings via environment variables
-export INVENTORY_CSV_FILE="/path/to/custom/hosts.csv"
-export INVENTORY_LOG_LEVEL="DEBUG"
-export INVENTORY_KEY="cname"
-export INVENTORY_SUPPORT_GROUP="Custom Support Team"
-```
-
-### **Global CLI Options**
-- `--csv-file`: Custom CSV data source
-- `--output-format`: text (default) or json
-- `--log-level`: DEBUG, INFO, WARNING, ERROR
-- `--inventory-key`: hostname (default) or cname
-
-## 🚀 **Enterprise Features**
-
-- **JSON Output**: Machine-readable output for automation and CI/CD
-- **Comprehensive Logging**: Configurable logging levels with structured output
-- **Error Handling**: Proper exit codes and detailed error messages
-- **Performance**: Sub-second operations for typical workloads
-- **Type Safety**: Full type hints and validation throughout
-- **Health Scoring**: 0-100% health scores with actionable recommendations
-
-## 📖 **Documentation**
-
-- **USER_GUIDE.md**: Complete user documentation with examples
-
-## 🛡️ **Production Ready**
-
-This system is designed for enterprise use with:
-- Comprehensive error handling and recovery
-- Performance monitoring (sub-second generation times)
-- Backup and rollback capabilities
-- Extensive logging and audit trails
-- Type-safe data models and validation
-
-## 🤝 **Contributing**
-
-1. Follow the existing code structure and patterns
-2. Add comprehensive type hints
-3. Include proper error handling
-4. Update documentation for any changes
-5. Test thoroughly with various CSV formats
+- Built for the Ansible community
+- Inspired by real-world infrastructure management needs
+- Designed for flexibility and extensibility
 
 ---
 
-**Version**: 4.0.0  
-**Status**: Production Ready  
-**Team**: Infrastructure as Code Team
+**Ready to get started?** Begin with the [Installation Guide](docs/installation.md) or jump straight to the [CSV Format Reference](docs/csv_format.md) to understand the data structure.

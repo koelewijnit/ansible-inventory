@@ -288,19 +288,29 @@ EXAMPLE_COMMANDS = _config.get("examples", {}).get(
 
 # New configuration utility functions
 def get_csv_template_headers() -> List[str]:
-    """Get CSV template headers from configuration."""
+    """Get CSV template headers from configuration.
+    
+    Includes dynamic product columns (product_1, product_2, etc.) to support
+    flexible product definitions where hosts can have 1 to N products.
+    
+    Returns:
+        List of CSV headers in logical order
+    """
     headers = _config.get("data", {}).get(
         "csv_template_headers",
         [
             "hostname",
-            "environment",
+            "environment", 
             "status",
             "cname",
             "instance",
             "site_code",
             "ssl_port",
             "application_service",
-            "product_id",
+            "product_1",  # Primary product
+            "product_2",  # Secondary product (optional)
+            "product_3",  # Tertiary product (optional)
+            "product_4",  # Quaternary product (optional)
             "primary_application",
             "function",
             "batch_number",
@@ -487,3 +497,14 @@ class ErrorMessages:
     def format_error(cls, template: str, **kwargs: Any) -> str:
         """Format error message with parameters."""
         return template.format(**kwargs)
+
+
+def get_environment_info_from_code(code: str) -> Optional[Dict[str, str]]:
+    """Map a location/environment code (e.g. PRD) to full environment name and inventory filename.
+    Returns a dict with keys 'name' and 'inventory_file', or None if not found."""
+    config = load_config()
+    mapping = config.get("location_codes", {})
+    entry = mapping.get(code.upper())
+    if entry:
+        return {"name": entry.get("name"), "inventory_file": entry.get("inventory_file")}
+    return None

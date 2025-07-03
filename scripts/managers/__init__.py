@@ -8,5 +8,6 @@ domains of functionality, separated from the CLI command layer.
 from .host_manager import HostManager
 from .inventory_manager import InventoryManager
 from .validation_manager import ValidationManager
+from .group_vars_manager import GroupVarsManager
 
-__all__ = ["InventoryManager", "HostManager", "ValidationManager"]
+__all__ = ["InventoryManager", "HostManager", "ValidationManager", "GroupVarsManager"]

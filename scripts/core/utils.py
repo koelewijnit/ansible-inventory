@@ -145,8 +145,13 @@ def load_csv_data(
                 if not primary_id or primary_id.startswith("#"):
                     continue
 
-                # Clean up all string values
-                cleaned_row = {k: v.strip() if v else "" for k, v in row.items()}
+                # Clean up all string values and handle product_id as a list
+                cleaned_row = {}
+                for k, v in row.items():
+                    if k == "product_id" and v:
+                        cleaned_row[k] = [item.strip() for item in v.split(',')]
+                    else:
+                        cleaned_row[k] = v.strip() if isinstance(v, str) and v else ""
                 hosts.append(cleaned_row)
 
             return hosts

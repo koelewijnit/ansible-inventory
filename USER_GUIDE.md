@@ -1,204 +1,677 @@
-# Ansible Inventory Management - User Guide
+# User Guide - Ansible Inventory Management System
 
-Complete guide for using the unified CLI inventory management system.
+This comprehensive user guide provides everything you need to know to effectively use the Ansible Inventory Management System.
 
-## 🚀 **Getting Started**
+## Table of Contents
 
-### **Prerequisites**
-- Python 3.7 or higher
-- PyYAML package (`pip install PyYAML`)
-- Ansible (optional, for validation)
+1. [Getting Started](#getting-started)
+2. [CSV Data Management](#csv-data-management)
+3. [Configuration](#configuration)
+4. [Core Operations](#core-operations)
+5. [Advanced Features](#advanced-features)
+6. [Ansible Integration](#ansible-integration)
+7. [Best Practices](#best-practices)
+8. [Troubleshooting](#troubleshooting)
 
-### **Installation**
+## Getting Started
+
+### Prerequisites
+
+- **Python**: 3.8+ (recommended: 3.11+)
+- **Ansible**: 2.9+ (recommended: 2.18+)
+- **Operating System**: Linux, macOS, Windows (with WSL)
+
+### Installation
+
 ```bash
-# 1. Make the CLI executable
-chmod +x scripts/ansible_inventory_cli.py
+# Clone the repository
+git clone https://github.com/your-org/ansible-inventory-cli.git
+cd ansible-inventory-cli
 
-# 2. Optional: Create a convenient alias
-alias inventory-cli='python scripts/ansible_inventory_cli.py'
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-# 3. Verify installation
-python scripts/ansible_inventory_cli.py --version
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy configuration
+cp inventory-config.yml.example inventory-config.yml
 ```
 
----
+### First Steps
 
-## 📋 **CLI Commands Reference**
+1. **Configure the system**: Edit `inventory-config.yml` to match your environment
+2. **Prepare your CSV**: Create or modify `inventory_source/hosts.csv`
+3. **Generate inventory**: Run `python3 scripts/ansible_inventory_cli.py generate`
+4. **Test with Ansible**: Use the generated inventory files
 
-### **Global Options**
+## CSV Data Management
 
-All commands support these global options:
+### Understanding the CSV Structure
 
-```bash
---csv-file PATH           # Use custom CSV file
---log-level LEVEL         # DEBUG, INFO, WARNING, ERROR
---output-format FORMAT    # text (default) or json
---version                 # Show version information
---help                    # Show help information
+The system supports a flexible CSV structure with these column types:
+
+#### Required Columns
+```csv
+hostname,environment,status
+prd-web-01,production,active
+dev-api-01,development,active
 ```
 
-### **Generate Command**
+#### Standard Columns
+- **Identity**: `cname`, `instance`
+- **Infrastructure**: `site_code`, `ssl_port`
+- **Application**: `application_service`, `primary_application`, `function`
+- **Operational**: `batch_number`, `patch_mode`, `dashboard_group`
+- **Lifecycle**: `decommission_date`
 
-Generate Ansible inventory files and host variables.
+#### Dynamic Product Columns
+```csv
+hostname,environment,status,product_1,product_2,product_3
+prd-web-01,production,active,web,analytics,
+prd-api-01,production,active,api,monitoring,logging
+```
+
+#### Extra Variables
+Any additional columns become host metadata:
+```csv
+hostname,environment,status,custom_role,monitoring_level,backup_retention
+prd-web-01,production,active,load_balancer,high,30
+prd-api-01,production,active,api_gateway,high,30
+```
+
+### Creating Your First CSV
+
+1. **Start with required fields**:
+   ```csv
+   hostname,environment,status
+   prd-web-01,production,active
+   ```
+
+2. **Add application information**:
+   ```csv
+   hostname,environment,status,application_service,product_1
+   prd-web-01,production,active,web_server,web
+   ```
+
+3. **Add infrastructure details**:
+   ```csv
+   hostname,environment,status,application_service,product_1,site_code,ssl_port
+   prd-web-01,production,active,web_server,web,use1,443
+   ```
+
+4. **Add operational data**:
+   ```csv
+   hostname,environment,status,application_service,product_1,site_code,ssl_port,batch_number,patch_mode
+   prd-web-01,production,active,web_server,web,use1,443,1,auto
+   ```
+
+### CSV Best Practices
+
+#### Data Quality
+- Use consistent naming conventions
+- Validate data types (integers for numeric fields)
+- Avoid empty required fields
+- Use meaningful values for extra variables
+
+#### Organization
+- Group related columns together
+- Use descriptive column names
+- Document custom columns
+- Keep data consistent across environments
+
+#### Maintenance
+- Regular backups of CSV files
+- Version control for CSV changes
+- Validation before committing changes
+- Regular cleanup of obsolete data
+
+## Configuration
+
+### Configuration File Overview
+
+The system uses `inventory-config.yml` for all configuration:
+
+```yaml
+# Version and metadata
+version: "2.0.0"
+description: "Ansible Inventory Management System Configuration"
+
+# Project structure
+paths:
+  project_root: "."
+  inventory_source: "inventory_source"
+  inventory: "inventory"
+  host_vars: "inventory/host_vars"
+  group_vars: "inventory/group_vars"
+
+# Data sources
+data:
+  csv_file: "inventory_source/hosts.csv"
+  csv_template_headers:
+    - hostname
+    - environment
+    - status
+    # ... other headers
+
+# Environment configuration
+environments:
+  supported:
+    - production
+    - development
+    - test
+    - acceptance
+  codes:
+    production: "prd"
+    development: "dev"
+```
+
+### Key Configuration Sections
+
+#### Environment Configuration
+```yaml
+environments:
+  supported:
+    - production
+    - development
+    - test
+    - acceptance
+    - staging  # Add new environments here
+  codes:
+    production: "prd"
+    development: "dev"
+    staging: "stg"  # Add environment codes
+```
+
+#### Host Configuration
+```yaml
+hosts:
+  valid_status_values:
+    - active
+    - decommissioned
+  default_status: "active"
+  
+  valid_patch_modes:
+    - auto
+    - manual
+  
+  inventory_key: "hostname"  # or "cname"
+  
+  grace_periods:
+    production: 90
+    development: 7
+    staging: 21  # Add grace periods
+```
+
+#### Feature Flags
+```yaml
+features:
+  patch_management: true
+  lifecycle_management: true
+  backup_on_generate: false
+  strict_validation: false
+  cleanup_orphaned_on_generate: true
+```
+
+### Environment Variable Overrides
+
+Override any configuration value using environment variables:
 
 ```bash
-# Basic usage - generate all environments
-python scripts/ansible_inventory_cli.py generate
+# Override CSV file location
+export INVENTORY_CSV_FILE="/path/to/custom/hosts.csv"
+
+# Override logging level
+export INVENTORY_LOG_LEVEL="DEBUG"
+
+# Override inventory key preference
+export INVENTORY_KEY="cname"
+
+# Override support group
+export INVENTORY_SUPPORT_GROUP="DevOps Team"
+```
+
+## Core Operations
+
+### Basic Commands
+
+#### Generate Inventory
+```bash
+# Generate all environments
+python3 scripts/ansible_inventory_cli.py generate
 
 # Generate specific environments
-python scripts/ansible_inventory_cli.py generate --environments production test
+python3 scripts/ansible_inventory_cli.py generate --environments production test
 
-# Custom output directories
-python scripts/ansible_inventory_cli.py generate \
-  --output-dir custom_inventory \
-  --host-vars-dir custom_inventory/host_vars
+# Use custom CSV file
+python3 scripts/ansible_inventory_cli.py --csv-file custom.csv generate
 
-# Using custom CSV file
-python scripts/ansible_inventory_cli.py generate \
-  --csv-file backup_hosts.csv
+# Dry run (preview without creating files)
+python3 scripts/ansible_inventory_cli.py generate --dry-run
 ```
 
-**Options:**
-- `--output-dir, -o`: Output directory for inventory files (default: `inventory`)
-- `--host-vars-dir`: Directory for host_vars files (default: `inventory/host_vars`)
-- `--environments, -e`: Specific environments to generate
-
-### **Health Command**
-
-Monitor inventory health and get recommendations.
-
+#### Validate Data
 ```bash
-# Basic health check
-python scripts/ansible_inventory_cli.py health
+# Validate current CSV
+python3 scripts/ansible_inventory_cli.py validate
 
-# JSON output for automation
-python scripts/ansible_inventory_cli.py --output-format json health
+# Validate with custom CSV
+python3 scripts/ansible_inventory_cli.py --csv-file custom.csv validate
+
+# Validate with debug output
+python3 scripts/ansible_inventory_cli.py --log-level DEBUG validate
+```
+
+#### Health Check
+```bash
+# Check system health
+python3 scripts/ansible_inventory_cli.py health
 
 # Health check with custom CSV
-python scripts/ansible_inventory_cli.py --csv-file custom.csv health
+python3 scripts/ansible_inventory_cli.py --csv-file custom.csv health
+
+# Health check with JSON output
+python3 scripts/ansible_inventory_cli.py --json health
 ```
 
-**Health Scoring:**
-- **EXCELLENT** (95-100%): Optimal health
-- **GOOD** (85-94%): Minor issues
-- **FAIR** (70-84%): Some attention needed
-- **POOR** (50-69%): Significant issues
-- **CRITICAL** (<50%): Immediate action required
+### Advanced Commands
 
-### **CSV Management**
-
-### Viewing CSV Data
+#### Lifecycle Management
 ```bash
-# View CSV with column headers
-head -5 inventory_source/hosts.csv
+# List expired hosts
+python3 scripts/ansible_inventory_cli.py lifecycle list-expired
 
-# Count hosts by environment
-cut -d',' -f3 inventory_source/hosts.csv | sort | uniq -c
+# Cleanup with dry run
+python3 scripts/ansible_inventory_cli.py lifecycle cleanup --dry-run
 
-# Filter by specific environment
-grep ",production," inventory_source/hosts.csv
+# Actually cleanup expired hosts
+python3 scripts/ansible_inventory_cli.py lifecycle cleanup
+
+# Extend decommission date
+python3 scripts/ansible_inventory_cli.py lifecycle extend --host prd-web-01 --days 30
 ```
 
-### Manual CSV Editing
-- Always backup before editing: `cp inventory_source/hosts.csv inventory_source/hosts.csv.backup`
-- Use proper CSV format with quoted fields containing commas
-- Validate after editing: `python scripts/ansible_inventory_cli.py validate`
+#### Custom Options
+```bash
+# Use CNAME as inventory key
+python3 scripts/ansible_inventory_cli.py generate --inventory-key cname
 
+# Custom output directory
+python3 scripts/ansible_inventory_cli.py generate --output-dir /tmp/inventory
 
+# Custom host_vars directory
+python3 scripts/ansible_inventory_cli.py generate --host-vars-dir /tmp/host_vars
 
-## 🎯 **Common Workflows**
+# Quiet mode for scripting
+python3 scripts/ansible_inventory_cli.py --quiet generate
+```
 
-### **Daily Operations Workflow**
+## Advanced Features
+
+### Dynamic Product Columns
+
+The system supports flexible product definitions:
+
+#### Basic Product Usage
+```csv
+hostname,environment,status,product_1
+prd-web-01,production,active,web
+prd-api-01,production,active,api
+```
+
+#### Multiple Products per Host
+```csv
+hostname,environment,status,product_1,product_2,product_3
+prd-web-01,production,active,web,analytics,
+prd-api-01,production,active,api,monitoring,logging
+prd-db-01,production,active,db,backup,monitoring
+```
+
+#### Generated Groups
+Each product creates a group:
+- `product_web` - All hosts with web product
+- `product_api` - All hosts with api product
+- `product_analytics` - All hosts with analytics product
+
+### Extra Variables (Metadata)
+
+Any CSV column not in the standard list becomes an extra variable:
+
+#### Adding Extra Variables
+```csv
+hostname,environment,status,custom_role,monitoring_level,backup_retention,security_tier
+prd-web-01,production,active,load_balancer,high,30,production
+prd-api-01,production,active,api_gateway,high,30,production
+prd-db-01,production,active,database_server,critical,90,production
+```
+
+#### Accessing in Ansible
+```yaml
+# playbook.yml
+---
+- name: Example playbook
+  hosts: all
+  tasks:
+    - name: Show custom role
+      debug:
+        msg: "Host {{ inventory_hostname }} has custom role: {{ custom_role }}"
+    
+    - name: Show monitoring level
+      debug:
+        msg: "Host {{ inventory_hostname }} has monitoring level: {{ monitoring_level }}"
+    
+    - name: Configure backup retention
+      debug:
+        msg: "Setting backup retention to {{ backup_retention }} days"
+```
+
+### Patch Management
+
+Configure patch windows in your configuration:
+
+```yaml
+patch_management:
+  windows:
+    batch_1: "Saturday 02:00-04:00 UTC"
+    batch_2: "Saturday 04:00-06:00 UTC"
+    batch_3: "Saturday 06:00-08:00 UTC"
+    dev_batch: "Friday 18:00-20:00 UTC"
+    test_batch: "Friday 20:00-22:00 UTC"
+    acc_batch: "Friday 22:00-24:00 UTC"
+```
+
+### Lifecycle Management
+
+Manage host decommissioning:
 
 ```bash
-# 1. Check system health
-python scripts/ansible_inventory_cli.py health
+# Mark host for decommissioning
+# Edit CSV: set status to "decommissioned" and add decommission_date
 
-# 2. If health issues found, investigate
-python scripts/ansible_inventory_cli.py --log-level DEBUG health
+# List hosts past decommission date
+python3 scripts/ansible_inventory_cli.py lifecycle list-expired
 
-# 3. Generate updated inventories
-python scripts/ansible_inventory_cli.py generate
+# Preview cleanup
+python3 scripts/ansible_inventory_cli.py lifecycle cleanup --dry-run
 
-# 4. Validate configuration
-python scripts/ansible_inventory_cli.py validate
+# Perform cleanup
+python3 scripts/ansible_inventory_cli.py lifecycle cleanup
+```
 
-# 5. Test with Ansible (optional)
+## Ansible Integration
+
+### Testing Generated Inventory
+
+#### Basic Inventory Commands
+```bash
+# List all hosts
 ansible-inventory -i inventory/production.yml --list
+
+# Show inventory structure
+ansible-inventory -i inventory/production.yml --graph
+
+# List hosts in specific group
+ansible-inventory -i inventory/production.yml --list-hosts app_web_server
+
+# Show host variables
+ansible-inventory -i inventory/production.yml --host prd-web-01
 ```
 
-### **Host Decommissioning Workflow**
-
+#### Group Targeting
 ```bash
-# 1. Mark host as decommissioned (dry run first)
-python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2025-12-31 --dry-run
+# Target application group
+ansible-playbook playbook.yml -i inventory/production.yml --limit app_web_server
 
-# 2. Confirm and execute decommission
-python scripts/ansible_inventory_cli.py lifecycle decommission \
-  --hostname old-server-01 --date 2025-12-31 --reason "Hardware EOL"
+# Target product group
+ansible-playbook playbook.yml -i inventory/production.yml --limit product_web
 
-# 3. Regenerate inventories
-python scripts/ansible_inventory_cli.py generate
+# Target environment group
+ansible-playbook playbook.yml -i inventory/production.yml --limit env_production
 
-# 4. Verify health improvement
-python scripts/ansible_inventory_cli.py health
-
-# 5. Later: Cleanup expired hosts
-python scripts/ansible_inventory_cli.py lifecycle list-expired
-python scripts/ansible_inventory_cli.py lifecycle cleanup --dry-run
-python scripts/ansible_inventory_cli.py lifecycle cleanup
+# Target site group
+ansible-playbook playbook.yml -i inventory/production.yml --limit site_use1
 ```
+
+### Using in Playbooks
+
+#### Basic Playbook Example
+```yaml
+# playbook.yml
+---
+- name: Configure web servers
+  hosts: app_web_server
+  tasks:
+    - name: Show host information
+      debug:
+        msg: "Configuring {{ inventory_hostname }} ({{ cname }})"
+    
+    - name: Show products
+      debug:
+        msg: "Host has products: {{ products }}"
+```
+
+#### Advanced Playbook Example
+```yaml
+# advanced_playbook.yml
+---
+- name: Configure based on custom variables
+  hosts: all
+  tasks:
+    - name: Configure monitoring based on level
+      debug:
+        msg: "Configuring {{ monitoring_level }} monitoring for {{ inventory_hostname }}"
+      when: monitoring_level is defined
+    
+    - name: Configure backup retention
+      debug:
+        msg: "Setting backup retention to {{ backup_retention }} days"
+      when: backup_retention is defined
+    
+    - name: Configure security tier
+      debug:
+        msg: "Applying {{ security_tier }} security configuration"
+      when: security_tier is defined
+```
+
+### Generated Groups Reference
+
+#### Application Groups
+- `app_web_server` - All web servers
+- `app_api_server` - All API servers
+- `app_database_server` - All database servers
+
+#### Product Groups
+- `product_web` - All hosts with web product
+- `product_api` - All hosts with api product
+- `product_analytics` - All hosts with analytics product
+
+#### Environment Groups
+- `env_production` - All production hosts
+- `env_development` - All development hosts
+- `env_test` - All test hosts
+
+#### Site Groups
+- `site_use1` - All hosts in use1 site
+- `site_usw2` - All hosts in usw2 site
+
+#### Dashboard Groups
+- `dashboard_web_servers` - All hosts in web_servers dashboard
+- `dashboard_api_servers` - All hosts in api_servers dashboard
+
+## Best Practices
+
+### CSV Management
+
+#### Data Organization
+- Use consistent naming conventions
+- Group related columns together
+- Document custom columns
+- Regular validation and cleanup
+
+#### Version Control
+- Commit CSV changes with descriptive messages
+- Use branches for major changes
+- Review changes before merging
+- Keep backups of important data
+
+### Configuration Management
+
+#### Environment-Specific Configuration
+```yaml
+# Use environment variables for sensitive data
+environments:
+  production:
+    backup_location: "s3://production-backups"
+  development:
+    backup_location: "s3://development-backups"
+```
+
+#### Feature Management
+```yaml
+# Enable/disable features as needed
+features:
+  patch_management: true
+  lifecycle_management: true
+  backup_on_generate: false  # Disable in development
+  strict_validation: true    # Enable in production
+```
+
+### Automation
+
+#### CI/CD Integration
+```yaml
+# .gitlab-ci.yml example
+stages:
+  - validate
+  - generate
+  - test
+
+validate_inventory:
+  stage: validate
+  script:
+    - python3 scripts/ansible_inventory_cli.py validate
+
+generate_inventory:
+  stage: generate
+  script:
+    - python3 scripts/ansible_inventory_cli.py generate
+  artifacts:
+    paths:
+      - inventory/
+
+test_inventory:
+  stage: test
+  script:
+    - ansible-inventory -i inventory/production.yml --list
+    - ansible-inventory -i inventory/production.yml --graph
+```
+
+#### Monitoring Scripts
+```bash
+#!/bin/bash
+# inventory_monitor.sh
+
+set -e
+
+echo "Starting inventory monitoring..."
+
+# Check health
+python3 scripts/ansible_inventory_cli.py health
+
+# Validate data
+python3 scripts/ansible_inventory_cli.py validate
+
+# Generate inventory
+python3 scripts/ansible_inventory_cli.py generate
+
+echo "Inventory monitoring completed successfully!"
+```
+
+### Performance Optimization
+
+#### Large CSV Files
+- Use `--quiet` mode for large files
+- Generate specific environments only
+- Use SSD storage for better performance
+- Optimize CSV by removing unnecessary columns
+
+#### Memory Usage
+- Monitor memory usage with `--timing`
+- Use streaming for very large files
+- Regular cleanup of old data
+- Optimize configuration for your use case
+
+## Troubleshooting
+
+### Common Issues
+
+#### CSV Parsing Errors
+```bash
+# Check CSV format
+python3 scripts/ansible_inventory_cli.py validate
+
+# Debug CSV loading
+python3 -c "from scripts.core.utils import load_csv_data; print(load_csv_data())"
+```
+
+#### Configuration Issues
+```bash
+# Check configuration status
+python3 -c "from scripts.core.config import print_configuration_status; print_configuration_status()"
+
+# Validate configuration
+python3 -c "from scripts.core.config import validate_configuration; warnings = validate_configuration(); print(warnings)"
+```
+
+#### Permission Issues
+```bash
+# Check file permissions
+ls -la inventory_source/hosts.csv
+ls -la inventory/
+
+# Fix permissions if needed
+chmod 644 inventory_source/hosts.csv
+chmod -R 755 inventory/
+```
+
+### Debug Mode
+
+#### Enable Debug Logging
+```bash
+# Enable debug logging
+python3 scripts/ansible_inventory_cli.py --log-level DEBUG generate
+
+# Debug specific component
+python3 -c "import logging; logging.basicConfig(level=logging.DEBUG); from scripts.core.models import Host; print('Debug mode enabled')"
+```
+
+#### Validation Debugging
+```bash
+# Detailed validation
+python3 scripts/ansible_inventory_cli.py --log-level DEBUG validate
+
+# Check specific validation aspects
+python3 -c "from scripts.core.utils import validate_csv_structure; result = validate_csv_structure(Path('inventory_source/hosts.csv')); print(result.get_summary())"
+```
+
+### Getting Help
+
+#### Documentation
+- Check the [CSV Format Reference](docs/csv_format.md)
+- Review the [Configuration Guide](docs/configuration.md)
+- Read the [Usage Guide](docs/usage.md)
+- Consult the [FAQ](docs/faq.md)
+
+#### Support Resources
+- Use built-in validation tools
+- Check error messages carefully
+- Review logs for detailed information
+- Test with minimal examples
 
 ---
 
-## 📊 **CSV Data Management**
-
-### **Required CSV Columns**
-
-| Column | Required | Description | Example |
-|--------|----------|-------------|---------|
-| `hostname` | ✅ | Unique hostname | `prd-web-01` |
-| `environment` | ✅ | Environment name | `production` |
-| `status` | ✅ | Host status | `active`, `decommissioned` |
-| `application_service` | ❌ | Service type | `web_server`, `database` |
-| `product_id` | ❌ | Product identifier | `apache_httpd`, `postgresql` |
-| `location` | ❌ | Geographic location | `us-east-1`, `europe-west1` |
-| `batch_number` | ❌ | Patch batch | `batch_1`, `batch_2` |
-| `patch_mode` | ❌ | Patching mode | `manual`, `auto` |
-| `ansible_tags` | ❌ | Comma-separated list of custom Ansible tags | `web, database, critical` |
-
-### **Using Ansible Tags**
-
-The `ansible_tags` column allows you to assign arbitrary tags to your hosts directly in the CSV. These tags are then included in the generated `host_vars` for each host. This enables powerful and flexible targeting in your Ansible playbooks using the `--tags` or `--skip-tags` command-line options.
-
-**How it works:**
-- When you generate the inventory, the value from the `ansible_tags` column for each host is added to its `host_vars`.
-- If a host has multiple tags, separate them with commas (e.g., `web, database, critical`).
-
-**Use Cases:**
-- **Granular Playbook Execution:** Run specific tasks only on hosts with certain tags.
-  ```bash
-  # Run tasks tagged 'security' only on hosts with 'web' tag
-  ansible-playbook my_playbook.yml --limit @web --tags security
-  ```
-- **Excluding Hosts from Tasks:** Skip tasks on hosts with specific tags.
-  ```bash
-  # Run all tasks except those tagged 'maintenance' on all production web servers
-  ansible-playbook webservers.yml -i inventory/production.yml --skip-tags maintenance
-  ```
-- **Categorizing Hosts:** Group hosts by custom criteria not covered by other fields.
-  ```csv
-  hostname,environment,ansible_tags
-  server1,production,frontend,nginx,critical
-  server2,production,backend,database
-  server3,development,test,experimental
-  ```
-  In your playbook, you can then target:
-  ```bash
-  # Target all 'critical' hosts
-  ansible all -i inventory/production.yml --list-hosts --limit @critical
-  ```
+**Need more help?** Check the [FAQ](docs/faq.md) for common questions or review the [Configuration Guide](docs/configuration.md) for advanced configuration options.
 - **Feature Rollouts:** Tag hosts participating in a new feature rollout.
 - **Compliance Audits:** Tag hosts that require specific compliance checks.
 

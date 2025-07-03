@@ -14,13 +14,16 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class Host:
-    """Structured host data model with automatic validation."""
+    """Structured host data model with automatic validation.
+    
+    Supports dynamic product columns (product_1, product_2, etc.) for flexible
+    product definitions. Each host can have 1 to N products as needed.
+    """
 
     environment: str
     status: str = "active"
     hostname: Optional[str] = None
     application_service: Optional[str] = None
-    product_id: Optional[str] = None
     site_code: Optional[str] = None
     instance: Optional[str] = None
     batch_number: Optional[str] = None
@@ -32,6 +35,8 @@ class Host:
     decommission_date: Optional[str] = None
     cname: Optional[str] = None
     ansible_tags: Optional[str] = None
+    # Dynamic product storage - supports product_1, product_2, etc.
+    products: Dict[str, str] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -116,7 +121,6 @@ class Host:
         # Clean up optional string fields
         for field_name in [
             "application_service",
-            "product_id",
             "site_code",
             "instance",
             "batch_number",
@@ -129,8 +133,15 @@ class Host:
             "ansible_tags",
         ]:
             value = getattr(self, field_name)
-            if value:
+            if value and isinstance(value, str):
                 setattr(self, field_name, value.strip())
+
+        # Clean up product fields
+        cleaned_products = {}
+        for key, value in self.products.items():
+            if value and isinstance(value, str) and value.strip():
+                cleaned_products[key] = value.strip()
+        self.products = cleaned_products
 
     @property
     def ansible_tags_list(self) -> List[str]:
@@ -160,41 +171,92 @@ class Host:
             return f"app_{self.application_service}"
         return None
 
-    def get_product_group_name(self) -> Optional[str]:
-        """Get product group name for inventory (legacy - use get_product_group_names for multiple products)."""
-        if self.product_id:
-            # For backward compatibility, return the first product group
-            product_ids = self.get_product_ids()
-            if product_ids:
-                return f"product_{product_ids[0]}"
-        return None
-
     def get_product_ids(self) -> List[str]:
         """Return a list of product IDs for this host.
-
-        Supports comma-separated values.
+        
+        Returns all non-empty product values from dynamic product columns.
+        Supports flexible product definitions using product_1, product_2, etc.
+        
+        Returns:
+            List of product IDs (e.g., ["web", "analytics", "monitoring"])
         """
-        if not self.product_id:
-            return []
-        # Split on comma, clean up whitespace, and filter empty strings
-        return [p.strip() for p in self.product_id.split(",") if p.strip()]
+        return list(self.products.values())
 
     def get_product_group_names(self) -> List[str]:
         """Return all product group names for inventory.
-
-        Supports multiple products.
+        
+        Creates group names in the format 'product_{product_id}' for each
+        product associated with this host.
+        
+        Returns:
+            List of product group names (e.g., ["product_web", "product_analytics"])
         """
         product_ids = self.get_product_ids()
         return [f"product_{product_id}" for product_id in product_ids]
 
     def has_product(self, product_id: str) -> bool:
-        """Check if host has a specific product installed."""
+        """Check if host has a specific product installed.
+        
+        Args:
+            product_id: The product ID to check for
+            
+        Returns:
+            True if the host has the specified product, False otherwise
+        """
         return product_id.strip() in self.get_product_ids()
 
     def get_primary_product_id(self) -> Optional[str]:
-        """Get the primary (first) product ID for this host."""
+        """Get the primary (first) product ID for this host.
+        
+        Returns the first product in the list, which is typically considered
+        the primary product for the host.
+        
+        Returns:
+            The primary product ID, or None if no products are defined
+        """
         product_ids = self.get_product_ids()
         return product_ids[0] if product_ids else None
+
+    def validate_products(self) -> List[str]:
+        """Validate product configuration and return any issues.
+        
+        Checks for:
+        - At least one product is defined
+        - No duplicate products
+        - Product column naming follows expected pattern
+        
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        issues = []
+        
+        # Check if host has at least one product
+        if not self.get_product_ids():
+            issues.append(f"Host {self.hostname} has no products defined")
+        
+        # Check for duplicate products
+        products = self.get_product_ids()
+        if len(products) != len(set(products)):
+            issues.append(f"Host {self.hostname} has duplicate products: {products}")
+        
+        # Check for gaps in product column numbering
+        product_keys = sorted(self.products.keys())
+        if product_keys:
+            # Extract numbers from product_1, product_2, etc.
+            numbers = []
+            for key in product_keys:
+                if key.startswith("product_"):
+                    try:
+                        num = int(key[8:])  # Remove "product_" prefix
+                        numbers.append(num)
+                    except ValueError:
+                        issues.append(f"Invalid product column name: {key}")
+            
+            # Check for gaps in numbering
+            if numbers and numbers != list(range(1, len(numbers) + 1)):
+                issues.append(f"Product columns should be sequential: {product_keys}")
+        
+        return issues
 
     def get_inventory_key_value(self, key_type: str = "hostname") -> str:
         """Get the value to use as inventory key based on the key type."""
@@ -222,13 +284,15 @@ class Host:
         return f"{self.get_inventory_key_value(key_type)}.yml"
 
     def to_dict(self) -> Dict[str, str]:
-        """Convert to dictionary for CSV/YAML output."""
-        return {
+        """Convert to dictionary for CSV/YAML output.
+        
+        Includes all dynamic product columns in the output.
+        """
+        result = {
             "hostname": self.hostname or "",
             "environment": self.environment,
             "status": self.status,
             "application_service": self.application_service or "",
-            "product_id": self.product_id or "",
             "site_code": self.site_code or "",
             "instance": self.instance or "",
             "batch_number": self.batch_number or "",
@@ -240,19 +304,44 @@ class Host:
             "decommission_date": self.decommission_date or "",
             "cname": self.cname or "",
             "ansible_tags": self.ansible_tags or "",
-            **self.metadata,
         }
+        
+        # Add dynamic product columns
+        result.update(self.products)
+        
+        # Add metadata
+        result.update(self.metadata)
+        
+        return result
 
     @classmethod
     def from_csv_row(cls, row: Dict[str, str]) -> "Host":
-        """Create Host from CSV row data."""
+        """Create Host from CSV row data with dynamic product column detection.
+        
+        Automatically detects any column starting with "product" and treats it
+        as a product definition. Supports flexible CSV structures where hosts
+        can have 1 to N products as needed.
+        
+        Args:
+            row: Dictionary representing a CSV row
+            
+        Returns:
+            Host object with all fields populated
+            
+        Example:
+            CSV with single product:
+                {"hostname": "host1", "environment": "production", "product_1": "web"}
+            
+            CSV with multiple products:
+                {"hostname": "host1", "environment": "production", 
+                 "product_1": "web", "product_2": "analytics", "product_3": "monitoring"}
+        """
         # Extract known fields
         known_fields = {
             "hostname",
             "environment",
             "status",
             "application_service",
-            "product_id",
             "site_code",
             "instance",
             "batch_number",
@@ -268,11 +357,20 @@ class Host:
 
         host_data: Dict[str, Any] = {}
         metadata: Dict[str, Any] = {}
+        products: Dict[str, str] = {}
 
         for k, v in row.items():
-            clean_value = v.strip() if v is not None else None
-            # Convert empty strings to None for optional fields
-            if k in known_fields:
+            if isinstance(v, str):
+                clean_value = v.strip() if v is not None else None
+            else:
+                clean_value = v
+                
+            # Handle dynamic product columns
+            if k.startswith("product"):
+                if clean_value:
+                    products[k] = clean_value
+            # Handle known fields
+            elif k in known_fields:
                 if k in ["hostname", "cname"] and not clean_value:
                     host_data[k] = None
                 else:
@@ -280,7 +378,11 @@ class Host:
             else:
                 metadata[k] = clean_value if clean_value is not None else ""
 
-        return cls(**host_data, metadata=metadata)
+        # Add products to host_data
+        host_data["products"] = products
+        host_data["metadata"] = metadata
+        
+        return cls(**host_data)
 
 
 @dataclass

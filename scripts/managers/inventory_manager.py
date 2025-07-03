@@ -23,8 +23,9 @@ from core import (
     get_logger,
     load_csv_data,
 )
-from core.config import load_config
+from core.config import load_config, get_environment_info_from_code
 from core.models import Host, InventoryConfig, InventoryStats
+from managers.group_vars_manager import GroupVarsManager
 
 # Ensure sibling modules are importable when imported outside of the `scripts`
 # directory
@@ -75,6 +76,15 @@ class InventoryManager:
 
         for row_data in csv_data:
             try:
+                # Map environment code to full name if needed
+                env_code = row_data.get("environment", "").strip()
+                if env_code:
+                    env_info = get_environment_info_from_code(env_code)
+                    if env_info:
+                        # Replace the environment code with the full name
+                        row_data["environment"] = env_info["name"]
+                        self.logger.debug(f"Mapped environment code '{env_code}' to '{env_info['name']}'")
+
                 host = Host.from_csv_row(row_data)
                 if environment and host.environment != environment:
                     continue
@@ -152,19 +162,7 @@ class InventoryManager:
     def generate_inventories(
         self, environments: Optional[List[str]] = None, dry_run: bool = False
     ) -> Dict[str, Any]:
-        """Generate inventory files for specified environments.
-
-        Args:
-            environments: List of environments to generate (None for all)
-            dry_run: If True, only show what would be generated
-
-        Returns:
-            Dictionary with generation results and statistics
-
-        Raises:
-            FileNotFoundError: If CSV source file doesn't exist
-            ValueError: If no valid hosts found
-        """
+        """Generate inventory files for specified environments."""
         self.logger.info("Starting inventory generation")
         start_time = time.time()
 
@@ -179,6 +177,9 @@ class InventoryManager:
 
             self.logger.info(f"Loaded {len(hosts)} hosts from CSV")
 
+            # Initialize GroupVarsManager
+            group_vars_manager = GroupVarsManager(logger=self.logger)
+            
             # Clean up orphaned host_vars files before generating new ones
             orphaned_count = self.cleanup_orphaned_host_vars(hosts, dry_run)
 
@@ -189,28 +190,36 @@ class InventoryManager:
             generated_files = []
 
             for env in target_environments:
+                # Map abbreviation to full name and filename if needed
+                env_info = get_environment_info_from_code(env)
+                if env_info:
+                    env_name = env_info["name"]
+                    inventory_filename = env_info["inventory_file"]
+                else:
+                    env_name = env
+                    inventory_filename = f"{env}.yml"
                 try:
-                    self.logger.info(f"Processing environment: {env}")
-                    env_hosts = [h for h in hosts if h.environment == env]
+                    self.logger.info(f"Processing environment: {env_name}")
+                    env_hosts = [h for h in hosts if h.environment == env or h.environment == env_name]
 
                     if not env_hosts:
-                        self.logger.warning(f"No hosts found for environment: {env}")
+                        self.logger.warning(f"No hosts found for environment: {env_name}")
                         continue
 
                     if dry_run:
                         self.logger.info(
-                            f"[DRY RUN] Would generate inventory for {env} "
+                            f"[DRY RUN] Would generate inventory for {env_name} "
                             f"with {len(env_hosts)} hosts"
                         )
                     else:
                         # Generate the actual inventory file
-                        inventory_file = self._generate_inventory_file(env, env_hosts)
+                        inventory_file = self._generate_inventory_file(env_name, env_hosts, inventory_filename)
                         generated_files.append(str(inventory_file))
                         self.logger.info(f"Generated inventory file: {inventory_file}")
 
                 except Exception as e:
                     self.logger.error(
-                        f"Failed to generate inventory for {env}: {e}", exc_info=True
+                        f"Failed to generate inventory for {env_name}: {e}", exc_info=True
                     )
                     # Continue with other environments
                     continue
@@ -227,6 +236,8 @@ class InventoryManager:
                 "stats": self.stats.__dict__,
                 "environments": target_environments,
                 "orphaned_files_removed": orphaned_count,
+                "group_vars_created": 0,
+                "group_orphaned_removed": 0,
             }
 
         except FileNotFoundError as e:
@@ -243,48 +254,37 @@ class InventoryManager:
         # Get the primary identifier for this host based on inventory key
         primary_id = host.get_inventory_key_value(self.config.inventory_key)
 
-        host_vars: Dict[str, Any] = {
-            "hostname": host.hostname or "",
-            "cname": host.cname or "",
-            "environment": host.environment,
-            "application_service": host.application_service or "",
-            "product_id": host.product_id or "",
-            "products": {
-                "installed": host.get_product_ids(),
-                "primary": host.get_primary_product_id() or "",
-                "count": len(host.get_product_ids()),
-            },
-            "site_code": host.site_code or "",
-            "instance": host.instance or "",
-            "status": host.status,
-            "cmdb_discovery": {
-                "support_group": DEFAULT_SUPPORT_GROUP,
-                "primary_application": host.primary_application or "",
-                "function": host.function or "",
-                "classification": host.environment.title(),
-                "dashboard_group": host.dashboard_group or "",
-            },
-            "patch_management": {
-                "batch_number": host.batch_number or "",
-                "patch_mode": host.patch_mode or "",
-                "patching_window": self.config.get_patching_window(
-                    host.batch_number or ""
-                ),
-                "requires_reboot": True,
-                "pre_patch_checks": True,
-            },
-        }
+        # Load field mappings from config
+        config = load_config()
+        field_mappings = config.get("field_mappings", {})
+        host_var_fields = field_mappings.get("host_vars", [])
 
-        if host.ssl_port:
-            try:
-                host_vars["ssl_port"] = int(host.ssl_port)
-            except ValueError:
-                host_vars["ssl_port"] = host.ssl_port
+        # Build host_vars with only designated fields
+        host_vars: Dict[str, Any] = {}
+        
+        # Add fields designated as host_vars
+        for field in host_var_fields:
+            value = getattr(host, field, None)
+            if value is not None:
+                # Special handling for ssl_port
+                if field == "ssl_port" and value:
+                    try:
+                        host_vars[field] = int(value)
+                    except ValueError:
+                        host_vars[field] = value
+                else:
+                    host_vars[field] = value if value else ""
 
-        if host.decommission_date:
-            host_vars["decommission_date"] = host.decommission_date
-
-        host_vars.update(host.metadata)
+        # Get all configured fields to exclude from metadata
+        all_configured_fields = set(host_var_fields)
+        all_configured_fields.update(field_mappings.get("group_references", []))
+        # Also exclude computed fields and internal fields
+        all_configured_fields.update(["group_path", "ansible_tags"])
+        
+        # Only add metadata fields that aren't already configured elsewhere
+        for key, value in host.metadata.items():
+            if key not in all_configured_fields:
+                host_vars[key] = value
 
         # Use the inventory key-based filename
         host_vars_filename = host.get_host_vars_filename(self.config.inventory_key)
@@ -300,31 +300,50 @@ class InventoryManager:
         self, hosts: List[Host], environment: str
     ) -> Dict[str, Any]:
         """Build inventory dictionary for an environment."""
-        inventory: Dict[str, Any] = defaultdict(lambda: {"hosts": {}})
+        inventory: Dict[str, Any] = defaultdict(lambda: {"hosts": {}, "children": {}})
+
+        # Add 'all' group as the top-level parent
+        inventory["all"] = {"children": {}}
 
         for host in hosts:
             if host.environment != environment:
                 continue
             host_key = host.get_inventory_key_value(self.config.inventory_key)
-            inventory[environment]["hosts"][host_key] = {}
 
+            # Ensure environment group exists and is a child of 'all'
+            env_group_name = f"env_{environment}"
+            if env_group_name not in inventory:
+                inventory[env_group_name] = {"hosts": {}, "children": {}}
+            inventory["all"]["children"][env_group_name] = {}
+
+            # Add host to environment group
+            inventory[env_group_name]["hosts"][host_key] = {}
+
+            # Add application service group as child of environment group
             if host.application_service:
                 app_group = host.get_app_group_name()
                 if app_group:
+                    if app_group not in inventory:
+                        inventory[app_group] = {"hosts": {}, "children": {}}
+                    inventory[env_group_name]["children"][app_group] = {}
                     inventory[app_group]["hosts"][host_key] = {}
 
-            # Support multiple products per host
-            if host.product_id:
-                product_groups = host.get_product_group_names()
-                for prod_group in product_groups:
-                    inventory[prod_group]["hosts"][host_key] = {}
+                    # Add product groups as children of application group
+                    if host.get_product_ids():
+                        for prod_group in host.get_product_group_names():
+                            if prod_group not in inventory:
+                                inventory[prod_group] = {"hosts": {}, "children": {}}
+                            inventory[app_group]["children"][prod_group] = {}
+                            inventory[prod_group]["hosts"][host_key] = {}
 
-            # Add site_code group if available
+            # Add site_code group if available (as child of environment group)
             if host.site_code:
-                # Ensure site_code is a string and handle any edge cases
                 site_code_str = str(host.site_code).strip()
                 if site_code_str:
                     site_group = f"site_{site_code_str.lower().replace('-', '_')}"
+                    if site_group not in inventory:
+                        inventory[site_group] = {"hosts": {}, "children": {}}
+                    inventory[env_group_name]["children"][site_group] = {}
                     inventory[site_group]["hosts"][host_key] = {}
 
         return dict(inventory)
@@ -362,12 +381,13 @@ class InventoryManager:
             f.write("\n")
             yaml.dump(filtered_inventory, f, default_flow_style=False, sort_keys=True)
 
-    def _generate_inventory_file(self, environment: str, hosts: List[Host]) -> Path:
+    def _generate_inventory_file(self, environment: str, hosts: List[Host], inventory_filename: str = None) -> Path:
         """Generate inventory file for a specific environment.
 
         Args:
             environment: Environment name
             hosts: List of hosts for this environment
+            inventory_filename: Optional custom filename for the inventory file
 
         Returns:
             Path to generated inventory file
@@ -393,7 +413,10 @@ class InventoryManager:
             )
 
             # Write inventory file
-            output_file = self.config.inventory_dir / f"{environment}.yml"
+            if inventory_filename:
+                output_file = self.config.inventory_dir / inventory_filename
+            else:
+                output_file = self.config.inventory_dir / f"{environment}.yml"
             self.write_inventory_file(
                 inventory, output_file, f"{environment.title()} Environment"
             )

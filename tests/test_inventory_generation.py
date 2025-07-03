@@ -35,10 +35,10 @@ def test_generate_inventory(tmp_path: Path):
 
     # Check the content
     data = yaml.safe_load(inv_file.read_text())
-    assert "production" in data
-    assert "hosts" in data["production"]
-    assert "web01" in data["production"]["hosts"]
-    assert "db01" in data["production"]["hosts"]
+    assert "env_production" in data
+    assert "hosts" in data["env_production"]
+    assert "web01" in data["env_production"]["hosts"]
+    assert "db01" in data["env_production"]["hosts"]
 
     # Test with ansible-inventory
     ansible_result = subprocess.run(

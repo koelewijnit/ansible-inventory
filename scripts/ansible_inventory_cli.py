@@ -1,11 +1,40 @@
 #!/usr/bin/env python3
-"""Ansible Inventory Management CLI.
+"""
+Ansible Inventory Management CLI.
 
 A comprehensive tool for managing Ansible inventories using CSV data sources
 with a clean modular command architecture.
 
 Author: J Goossens <jgoos@users.noreply.github.com>
 Version: 2.0.0
+
+CSV Product Columns (Dynamic System):
+-------------------------------------
+This system supports a flexible number of product columns in your CSV file.
+
+- You may define any number of columns named product_1, product_2, product_3, ...
+- Each host can use as many or as few product columns as needed.
+- Empty product columns are ignored for that host.
+- There is no need for quoting or comma-separated product lists.
+- Example CSV:
+
+    hostname,environment,application_service,product_1,product_2,product_3
+    prd-web-use1-1,production,web_server,web,analytics,monitoring
+    dev-api-use1-1,development,api_server,api,,
+    test-db-use1-1,test,database_server,db,backup,
+
+- The system will automatically add each host to all relevant product groups (e.g., product_web, product_analytics, ...).
+- You may add more product columns as needed (product_4, product_5, ...).
+- Validation ensures there are no gaps in product column numbering for each host.
+
+Migration:
+----------
+If you have an old CSV with a single 'product_id' column (comma-separated), use:
+    python3 scripts/convert_csv_to_dynamic_products.py inventory_source/hosts.csv
+
+This will convert your CSV to the new format with product_1, product_2, ... columns.
+
+For more details, see the README or documentation.
 """
 
 import argparse
@@ -171,6 +200,21 @@ Examples:
   %(prog)s lifecycle cleanup --dry-run
 
   # Import existing inventories
+
+CSV Product Columns (Dynamic System):
+-------------------------------------
+- Use columns named product_1, product_2, product_3, ... in your CSV.
+- Each host can use as many or as few product columns as needed.
+- Empty product columns are ignored.
+- Example:
+    hostname,environment,application_service,product_1,product_2,product_3
+    prd-web-use1-1,production,web_server,web,analytics,monitoring
+    dev-api-use1-1,development,api_server,api,,
+    test-db-use1-1,test,database_server,db,backup,
+- The system will automatically add each host to all relevant product groups.
+- To migrate from old CSVs, use:
+    python3 scripts/convert_csv_to_dynamic_products.py inventory_source/hosts.csv
+
 For more information, see the documentation at:
 https://github.com/your-org/inventory-structure
             """,

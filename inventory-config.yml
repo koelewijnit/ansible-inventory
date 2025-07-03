@@ -29,13 +29,17 @@ data:
     - site_code
     - ssl_port
     - application_service
-    - product_id
+    - product_1  # Primary product
+    - product_2  # Secondary product (optional)
+    - product_3  # Tertiary product (optional)
+    - product_4  # Quaternary product (optional)
     - primary_application
     - function
     - batch_number
     - patch_mode
     - dashboard_group
     - decommission_date
+    - group_path
 
 # Environment configuration
 environments:
@@ -159,4 +163,44 @@ features:
   lifecycle_management: true
   backup_on_generate: false
   strict_validation: false
-  cleanup_orphaned_on_generate: true  # Auto-remove orphaned host_vars files during generation 
+  cleanup_orphaned_on_generate: true  # Auto-remove orphaned host_vars files during generation
+
+# Environment/location code mappings
+location_codes:
+  PRD:
+    name: production
+    inventory_file: production.yml
+  TST:
+    name: test
+    inventory_file: test.yml
+  DT:
+    name: development
+    inventory_file: development.yml
+  ACC:
+    name: acceptance
+    inventory_file: acceptance.yml
+
+# Field mapping configuration - defines how CSV fields are processed
+field_mappings:
+  # Fields that should be stored as host-specific variables
+  host_vars:
+    - hostname
+    - cname
+    - instance
+    - decommission_date
+    - ssl_port
+    - batch_number
+    - patch_mode
+    - patching_window
+    - status
+    - cmdb_discovery.classification
+  
+  # Group references (for grouping logic)
+  group_references:
+    - application_service  # Creates app_{value} groups
+    - product_1           # Creates product_{value} groups
+    - product_2           # Creates product_{value} groups  
+    - product_3           # Creates product_{value} groups
+    - product_4           # Creates product_{value} groups
+    - site_code          # Creates site_{value} groups
+    - dashboard_group    # Creates dashboard_{value} groups 
