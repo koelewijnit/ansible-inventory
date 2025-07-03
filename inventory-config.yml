@@ -39,7 +39,6 @@ data:
     - patch_mode
     - dashboard_group
     - decommission_date
-    - group_path
 
 # Environment configuration
 environments:

@@ -46,9 +46,7 @@ api01,production,api,logging,cache,load_balancer,
 db01,production,database,backup,monitoring,replication,
 ```
 
-### What is the group_path field?
 
-The `group_path` field is currently **reserved for future use** but is not actively used in inventory generation.
 
 **Current Status:**
 - ✅ Field is accepted in CSV files

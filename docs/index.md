@@ -2,76 +2,76 @@
 
 Welcome to the comprehensive documentation for the Ansible Inventory Management System. This system provides automated inventory generation from CSV data with support for dynamic product columns, extra variables, and advanced Ansible integration.
 
-## Quick Start
+## 🚀 Quick Start for New Users
 
-1. **Install**: `make install-dev`
-2. **Configure**: Copy `inventory-config.yml.example` to `inventory-config.yml`
-3. **Prepare CSV**: Create `inventory_source/hosts.csv` with your host data
-4. **Generate**: `make generate`
-5. **Validate**: `make validate`
+**New to the system? Start here:**
 
-## Core Documentation
+1. **[Getting Started Guide](getting-started.md)** - Complete step-by-step tutorial for new users
+2. **[Quick Reference](QUICK_REFERENCE.md)** - Essential commands and examples
+3. **[User Guide](USER_GUIDE.md)** - Comprehensive user manual
+
+## 📚 Core Documentation
+
+### [Getting Started Guide](getting-started.md) ⭐ **NEW USERS START HERE**
+Complete tutorial covering:
+- Installation and setup
+- Creating your first CSV file
+- Setting up group variables
+- Generating your first inventory
+- Testing and validation
+- Common scenarios and examples
 
 ### [CSV Format Reference](csv_format.md)
 Complete reference for CSV file format, including:
 - Required and optional fields
-- Dynamic product columns (product_1, product_2, etc.)
+- Dynamic product columns (product_1, product_2, etc.) - **unlimited support**
 - Extra variables support
-- Reserved fields (group_path)
-- Data validation rules
-- Best practices and examples
+
+- Host variables vs group variables
+- Step-by-step group_vars setup
 
 ### [Configuration Guide](configuration.md)
-Comprehensive configuration options:
-- Environment setup
+Detailed configuration options:
+- Environment settings
 - Field mappings
 - Group naming patterns
 - Feature flags
 - Environment variable overrides
-- Customization examples
+- Common customizations
 
 ### [Usage Guide](usage.md)
-Step-by-step usage instructions:
+How to use the system effectively:
 - Basic commands
-- Advanced features
-- Ansible integration
-- Troubleshooting
+- Advanced targeting
+- Playbook integration
 - Best practices
+- Troubleshooting
 
 ### [Makefile Reference](makefile.md)
 Complete reference for all Makefile commands:
-- Inventory management commands
-- Development and testing commands
+- Inventory management shortcuts
+- Development commands
+- Testing and validation
 - CI/CD integration
-- Utility commands
-- Best practices and workflows
 
-## Reference Documentation
-
-### [Ansible Inventory](ansible_inventory.md)
-Generated inventory structure and usage:
-- Inventory file format
-- Group hierarchy
-- Host variables
-- Ansible integration examples
+## 🔧 Reference Documentation
 
 ### [FAQ](faq.md)
 Common questions and answers:
-- Troubleshooting
-- Configuration issues
+- General questions about the system
+- CSV and data questions
+- Configuration questions
+- Usage questions
+- Troubleshooting questions
+
+### [User Guide](USER_GUIDE.md)
+Comprehensive user manual with:
+- Detailed explanations
+- Advanced examples
 - Best practices
-- Advanced usage
+- Real-world scenarios
 
-## Legacy Documentation
-
-### [Legacy Documentation](legacy/)
-Historical documentation for reference:
-- [Getting Started](legacy/getting-started/)
-- [Development](legacy/development/)
-- [Operations](legacy/operations/)
-- [Reference](legacy/reference/)
-
-## Key Features
+## 🎯 Key Features
 
 ### Dynamic Product Support
 - **Unlimited** product definitions using `product_1`, `product_2`, etc.
@@ -81,25 +81,25 @@ Historical documentation for reference:
 
 ### Extra Variables
 - Any CSV column becomes an Ansible variable
-- Automatic inclusion in host_vars files
-- Accessible in playbooks and inventory queries
-- Preserved during processing
+- Automatically included in host_vars files
+- Accessible in Ansible playbooks
+- No configuration required
 
-### Reserved Fields
-- `group_path`: Reserved for future hierarchical organization
-- Currently accepted but not used in inventory generation
-- Future plans for nested group structures
+### Automatic Grouping
+- Environment groups (`env_production`, `env_development`, etc.)
+- Application groups (`app_web_server`, `app_api_server`, etc.)
+- Product groups (`product_web`, `product_api`, etc.)
+- Site groups (`site_use1`, `site_usw2`, etc.)
+- Dashboard groups (`dashboard_web_servers`, etc.)
 
 ### Advanced Features
-- Automatic orphaned file cleanup
-- Comprehensive validation
-- Health monitoring
-- Backup and recovery
-- External inventory import
+- **Validation**: Comprehensive data validation and health checks
+- **Lifecycle Management**: Handles host decommissioning and cleanup
+- **Makefile Integration**: Convenient commands for all operations
+- **CI/CD Ready**: Designed for automated deployment
 
-## Command Reference
+## 🛠️ Quick Commands
 
-### Core Commands
 ```bash
 # Generate inventory
 make generate
@@ -110,99 +110,80 @@ make validate
 # Health check
 make health-check
 
-# Dry run
-make generate-dry-run
+# Show all commands
+make help
 ```
 
-### Development Commands
-```bash
-# Install dependencies
-make install-dev
+## 📖 Learning Path
 
-# Run tests
-make test
+### For New Users
+1. **Start with** [Getting Started Guide](getting-started.md)
+2. **Review** [Quick Reference](QUICK_REFERENCE.md)
+3. **Explore** [CSV Format Reference](csv_format.md)
+4. **Customize** [Configuration Guide](configuration.md)
 
-# Code quality
-make lint
-make format
+### For Experienced Users
+1. **Review** [Usage Guide](usage.md)
+2. **Check** [Makefile Reference](makefile.md)
+3. **Explore** [User Guide](USER_GUIDE.md)
+4. **Reference** [FAQ](faq.md) for specific questions
 
-# Security checks
-make security
-```
+### For Administrators
+1. **Study** [Configuration Guide](configuration.md)
+2. **Review** [User Guide](USER_GUIDE.md)
+3. **Check** [Makefile Reference](makefile.md) for CI/CD integration
+4. **Explore** advanced features in [Usage Guide](usage.md)
 
-### CI/CD Commands
-```bash
-# CI installation
-make ci-install
+## 🔍 Finding What You Need
 
-# CI testing
-make ci-test
+### By Task
+- **Setting up**: [Getting Started Guide](getting-started.md)
+- **Configuring**: [Configuration Guide](configuration.md)
+- **Using**: [Usage Guide](usage.md)
+- **Troubleshooting**: [FAQ](faq.md)
 
-# CI linting
-make ci-lint
-```
+### By Experience Level
+- **Beginner**: [Getting Started Guide](getting-started.md) → [Quick Reference](QUICK_REFERENCE.md)
+- **Intermediate**: [Usage Guide](usage.md) → [User Guide](USER_GUIDE.md)
+- **Advanced**: [Configuration Guide](configuration.md) → [Makefile Reference](makefile.md)
 
-## File Structure
+### By Feature
+- **CSV format**: [CSV Format Reference](csv_format.md)
+- **Group variables**: [CSV Format Reference](csv_format.md#group-variables-group_vars)
+- **Product columns**: [CSV Format Reference](csv_format.md#dynamic-product-columns)
+- **Extra variables**: [CSV Format Reference](csv_format.md#extra-variables)
+- **Makefile**: [Makefile Reference](makefile.md)
 
-```
-inventory-structure-new/
-├── inventory_source/
-│   └── hosts.csv              # Source CSV file
-├── inventory/
-│   ├── production.yml         # Generated inventory files
-│   ├── development.yml
-│   ├── test.yml
-│   ├── acceptance.yml
-│   ├── host_vars/            # Host-specific variables
-│   └── group_vars/           # Group variables
-├── scripts/                   # Core application code
-├── docs/                      # Documentation
-├── tests/                     # Test suite
-├── Makefile                   # Build and utility commands
-├── inventory-config.yml       # Configuration
-└── README.md                  # Project overview
-```
-
-## Getting Help
+## 📞 Getting Help
 
 ### Documentation
-- Start with the [CSV Format Reference](csv_format.md)
-- Review the [Configuration Guide](configuration.md)
-- Check the [Usage Guide](usage.md) for examples
-- Consult the [FAQ](faq.md) for common issues
+- **Start here**: [Getting Started Guide](getting-started.md)
+- **Quick answers**: [FAQ](faq.md)
+- **Command reference**: [Quick Reference](QUICK_REFERENCE.md)
 
-### Commands
+### System Commands
 ```bash
-# Show all Makefile commands
-make help
+# Get help for any command
+python scripts/ansible_inventory_cli.py --help
 
 # Validate your setup
-make validate
+python scripts/ansible_inventory_cli.py validate
 
 # Check system health
-make health-check
+python scripts/ansible_inventory_cli.py health
 
-# Get command help
-python scripts/ansible_inventory_cli.py --help
+# Show all Makefile commands
+make help
 ```
 
-### Support
-- Check error messages carefully
-- Review logs for detailed information
-- Use dry-run commands to test changes
-- Validate after any modifications
+### Common Issues
+- **CSV parsing errors**: Check [CSV Format Reference](csv_format.md)
+- **Missing group_vars**: See [Getting Started Guide](getting-started.md#step-4-create-group-variables-files)
+- **Configuration issues**: Review [Configuration Guide](configuration.md)
+- **Targeting problems**: Check [Usage Guide](usage.md#advanced-targeting)
 
-## Version Information
+## 🎉 Welcome!
 
-- **Current Version**: 4.0.0
-- **Status**: Production Ready
-- **Python**: 3.8+
-- **Ansible**: 2.9+
+You're now ready to start using the Ansible Inventory Management System. Whether you're a beginner or an experienced user, this documentation will guide you through every aspect of the system.
 
-## Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for development guidelines and contribution information.
-
----
-
-**Need help?** Start with the [Quick Start Guide](usage.md#quick-start) or check the [FAQ](faq.md) for common questions.
+**Happy automating!** 🚀

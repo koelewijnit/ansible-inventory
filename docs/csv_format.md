@@ -48,24 +48,9 @@ hosts:
 | `function` | ❌ | Host function/role | `frontend`, `backend`, `database` |
 | `decommission_date` | ❌ | Decommission date (YYYY-MM-DD) | `2025-12-31` |
 | `ansible_tags` | ❌ | Comma-separated Ansible tags | `web,production,monitoring` |
-| `group_path` | ❌ | **Reserved field** - Organizational group path | `applications/web`, `applications/api` |
 
-## Reserved Fields
 
-### `group_path`
-The `group_path` field is currently reserved for future use but is **not actively used** in inventory generation. It's included in the CSV format for organizational purposes and potential future enhancements.
 
-**Current Status:**
-- ✅ Field is accepted in CSV files
-- ✅ Field is preserved during processing
-- ❌ Field does not create inventory groups
-- ❌ Field is not included in host_vars
-- ❌ Field does not affect inventory structure
-
-**Future Plans:**
-- May be used for hierarchical group organization
-- May create nested group structures
-- May be used for organizational grouping
 
 ## Dynamic Product Columns
 
@@ -587,11 +572,11 @@ The CSV file should be located at `inventory_source/hosts.csv` by default, but c
 ## Example CSV
 
 ```csv
-hostname,environment,status,cname,instance,site_code,ssl_port,application_service,product_1,product_2,product_3,product_4,batch_number,patch_mode,dashboard_group,primary_application,function,decommission_date,group_path,custom_role,monitoring_level
-prd-web-01,production,active,web01.example.com,1,use1,443,web_server,web,monitoring,,,1,auto,web_servers,wordpress,frontend,,applications/web,frontend,high
-prd-api-01,production,active,api01.example.com,1,use1,8443,api_server,api,logging,cache,,2,auto,api_servers,django,backend,,applications/api,backend,medium
-prd-db-01,production,active,db01.example.com,1,use1,,database_server,database,backup,,,3,manual,database_servers,postgresql,database,,applications/database,primary,high
-dev-web-01,development,active,dev-web01.example.com,1,use1,443,web_server,web,,,1,auto,dev_servers,wordpress,frontend,,applications/web,frontend,low
+hostname,environment,status,cname,instance,site_code,ssl_port,application_service,product_1,product_2,product_3,product_4,batch_number,patch_mode,dashboard_group,primary_application,function,decommission_date,custom_role,monitoring_level
+prd-web-01,production,active,web01.example.com,1,use1,443,web_server,web,monitoring,,,1,auto,web_servers,wordpress,frontend,,frontend,high
+prd-api-01,production,active,api01.example.com,1,use1,8443,api_server,api,logging,cache,,2,auto,api_servers,django,backend,,backend,medium
+prd-db-01,production,active,db01.example.com,1,use1,,database_server,database,backup,,,3,manual,database_servers,postgresql,database,,primary,high
+dev-web-01,development,active,dev-web01.example.com,1,use1,443,web_server,web,,,1,auto,dev_servers,wordpress,frontend,,frontend,low
 ```
 
 ## Configuration

@@ -71,7 +71,7 @@ data:
     - patch_mode
     - dashboard_group
     - decommission_date
-    - group_path
+
 ```
 
 **Important Notes:**

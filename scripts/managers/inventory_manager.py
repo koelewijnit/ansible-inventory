@@ -279,7 +279,7 @@ class InventoryManager:
         all_configured_fields = set(host_var_fields)
         all_configured_fields.update(field_mappings.get("group_references", []))
         # Also exclude computed fields and internal fields
-        all_configured_fields.update(["group_path", "ansible_tags"])
+        all_configured_fields.update(["ansible_tags"])
         
         # Only add metadata fields that aren't already configured elsewhere
         for key, value in host.metadata.items():
