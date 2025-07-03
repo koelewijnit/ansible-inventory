@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core import get_logger
+from core.config import get_default_inventory_key
 from managers.inventory_manager import InventoryManager
 
 from .base import BaseCommand, CommandResult
@@ -65,8 +66,8 @@ class GenerateCommand(BaseCommand):
         parser.add_argument(
             "--inventory-key",
             choices=["hostname", "cname"],
-            default="hostname",
-            help="Key to use for inventory host entries (default: hostname)",
+            default=get_default_inventory_key(),
+            help="Key to use for inventory host entries (default: from config)",
         )
 
     def execute(self, args: Any) -> Dict[str, Any]:
