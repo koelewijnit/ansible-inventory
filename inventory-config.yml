@@ -192,6 +192,8 @@ field_mappings:
     - patch_mode
     - patching_window
     - status
+    - function
+    - support_group
     - cmdb_discovery.classification
   
   # Group references (for grouping logic)

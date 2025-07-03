@@ -286,6 +286,12 @@ class InventoryManager:
                 else:
                     host_vars[field] = value if value else ""
 
+        # If support_group is a host_var, set it to default if missing or empty
+        if "support_group" in host_var_fields:
+            if not host_vars.get("support_group"):
+                default_support_group = config.get("cmdb", {}).get("default_support_group", "")
+                host_vars["support_group"] = default_support_group
+
         # Get all configured fields to exclude from metadata
         all_configured_fields = set(host_var_fields)
         all_configured_fields.update(field_mappings.get("group_references", []))
