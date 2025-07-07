@@ -8,5 +8,5 @@ alwaysApply: false
 
 * **Do not** hand-edit YAML under `inventory/`; use the managers in `scripts/managers/`.
 * CSV source schema must match `docs/csv_format.md`.
-* Validate with `task validate` (lifecycle command) before committing.
+* Validate with `make validate` (lifecycle command) before committing.
 * Inventory generation must be **idempotent**: write files only when their effective content differs from the desired state (e.g., new/changed hosts, variables, groups). Avoid timestamp-only or cosmetic rewrites that cause unnecessary Git diffs.
