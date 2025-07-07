@@ -1,0 +1,74 @@
+# Git Workflow Rules
+
+## Branch Protection & Pull Request Workflow
+
+### **NEVER Push to Main**
+- **NEVER** commit directly to the `main` branch
+- **NEVER** use `git push origin main` or similar commands
+- **ALWAYS** create feature branches for any changes
+
+### **Pull Request Requirements**
+- **ALWAYS** create a pull request for any code changes
+- **ALWAYS** use descriptive branch names following the pattern:
+  - `feature/description-of-feature`
+  - `fix/description-of-fix`
+  - `security/description-of-security-fix`
+  - `docs/description-of-docs-change`
+  - `refactor/description-of-refactor`
+
+### **Workflow Steps**
+1. **Create Branch**: `git checkout -b feature/your-feature-name`
+2. **Make Changes**: Implement your changes with proper commits
+3. **Push Branch**: `git push -u origin feature/your-feature-name`
+4. **Create PR**: Always create a pull request through GitHub/GitLab
+5. **Review & Merge**: Wait for review before merging
+
+### **Branch Naming Convention**
+```
+feature/add-new-validation-rules
+fix/resolve-csv-parsing-bug
+security/implement-input-validation
+docs/update-api-documentation
+refactor/restructure-host-manager
+chore/update-dependencies
+```
+
+### **Commit Message Format**
+Follow conventional commits:
+```
+type(scope): description
+
+feat(validation): add input length validation
+fix(csv): resolve race condition in file operations
+security(auth): implement secure user input handling
+docs(api): update function documentation
+refactor(core): restructure error handling
+chore(deps): update dependencies
+```
+
+### **Pre-Push Checklist**
+Before pushing any branch:
+- [ ] Code compiles without errors
+- [ ] All tests pass
+- [ ] Documentation is updated
+- [ ] Security considerations reviewed
+- [ ] Commit messages follow convention
+
+### **Emergency Hotfix Process**
+Even for urgent fixes:
+1. Create hotfix branch: `git checkout -b hotfix/critical-security-fix`
+2. Make minimal necessary changes
+3. Push branch and create PR
+4. Request expedited review
+5. Merge after approval
+
+### **AI Assistant Behavior**
+When the AI assistant needs to make changes:
+1. **Always check current branch** before making commits
+2. **Create new branch** if on main: `git checkout -b feature/ai-suggested-changes`
+3. **Never push to main** - always create PR
+4. **Inform user** about branch creation and PR requirements
+description:
+globs:
+alwaysApply: false
+---
