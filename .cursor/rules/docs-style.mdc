@@ -1,0 +1,10 @@
+---
+description: Documentation style & spell-check rules
+globs:
+  - docs/**/*.md
+alwaysApply: false
+---
+
+* Follow the style guide in `docs/contributing.md`.
+* Run `vale --minAlertLevel=error .` and `cspell --no-progress "**/*.md"`.
+* Use second-person, active voice. Avoid "we/our".

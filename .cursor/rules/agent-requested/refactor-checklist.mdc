@@ -1,0 +1,10 @@
+---
+description: Checklist the AI can include when a refactor spans >2 files
+alwaysApply: false
+---
+
+When refactoring:
+1. Update any impacted docstrings & docs pages.
+2. Run `pytest -q` and ensure green.
+3. Run `ruff --fix .` and `black .`.
+4. Update CHANGELOG (if applicable).
