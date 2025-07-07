@@ -5,9 +5,9 @@ This package contains business logic managers that handle specific
 domains of functionality, separated from the CLI command layer.
 """
 
+from .group_vars_manager import GroupVarsManager
 from .host_manager import HostManager
 from .inventory_manager import InventoryManager
 from .validation_manager import ValidationManager
-from .group_vars_manager import GroupVarsManager
 
 __all__ = ["InventoryManager", "HostManager", "ValidationManager", "GroupVarsManager"]

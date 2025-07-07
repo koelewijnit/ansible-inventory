@@ -41,13 +41,16 @@ class Host:
 
     def __post_init__(self) -> None:
         """Validate data after initialization."""
-        from .config import (
-            ENVIRONMENTS,
-            VALID_PATCH_MODES,
-            VALID_STATUS_VALUES,
-            ErrorMessages,
-        )
+        self._validate_required_fields()
+        self._validate_environment_and_status()
+        self._validate_numeric_fields()
+        self._validate_date_fields()
+        self._validate_instance_field()
+        self._clean_string_fields()
+        self._clean_product_fields()
 
+    def _validate_required_fields(self) -> None:
+        """Validate that required fields are provided."""
         # Validate that at least hostname or cname is provided
         if not self.hostname and not self.cname:
             raise ValueError("Either hostname or cname is required")
@@ -59,6 +62,15 @@ class Host:
         # If cname is provided, validate it
         if self.cname and not self.cname.strip():
             raise ValueError("CNAME cannot be empty when provided")
+
+    def _validate_environment_and_status(self) -> None:
+        """Validate environment and status fields."""
+        from .config import (
+            ENVIRONMENTS,
+            VALID_PATCH_MODES,
+            VALID_STATUS_VALUES,
+            ErrorMessages,
+        )
 
         if self.environment not in ENVIRONMENTS:
             raise ValueError(
@@ -78,21 +90,14 @@ class Host:
                 f"Must be one of: {VALID_PATCH_MODES}"
             )
 
+    def _validate_numeric_fields(self) -> None:
+        """Validate numeric fields."""
         if self.ssl_port:
             try:
                 int(self.ssl_port)
             except ValueError:
                 raise ValueError(
                     f"Invalid ssl_port: {self.ssl_port}. Must be an integer."
-                )
-
-        if self.decommission_date:
-            try:
-                datetime.strptime(self.decommission_date, "%Y-%m-%d")
-            except ValueError:
-                raise ValueError(
-                    f"Invalid decommission_date: {self.decommission_date}. "
-                    f"Must be in YYYY-MM-DD format."
                 )
 
         if self.batch_number:
@@ -103,6 +108,19 @@ class Host:
                     f"Invalid batch_number: {self.batch_number}. Must be an integer."
                 )
 
+    def _validate_date_fields(self) -> None:
+        """Validate date fields."""
+        if self.decommission_date:
+            try:
+                datetime.strptime(self.decommission_date, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError(
+                    f"Invalid decommission_date: {self.decommission_date}. "
+                    f"Must be in YYYY-MM-DD format."
+                )
+
+    def _validate_instance_field(self) -> None:
+        """Validate instance field."""
         if self.instance:
             # Allow 0 and positive integers without leading zeros
             if self.instance == "0" or re.fullmatch(r"[1-9]\d*", self.instance):
@@ -112,14 +130,16 @@ class Host:
                     f"Invalid instance: {self.instance}. Must be a positive integer without leading zeros."
                 )
 
-        # Clean up string fields
+    def _clean_string_fields(self) -> None:
+        """Clean up string fields."""
+        # Clean up required string fields
         if self.hostname:
             self.hostname = self.hostname.strip()
         self.environment = self.environment.strip()
         self.status = self.status.strip()
 
         # Clean up optional string fields
-        for field_name in [
+        optional_fields = [
             "application_service",
             "site_code",
             "instance",
@@ -131,12 +151,15 @@ class Host:
             "decommission_date",
             "cname",
             "ansible_tags",
-        ]:
+        ]
+
+        for field_name in optional_fields:
             value = getattr(self, field_name)
             if value and isinstance(value, str):
                 setattr(self, field_name, value.strip())
 
-        # Clean up product fields
+    def _clean_product_fields(self) -> None:
+        """Clean up product fields."""
         cleaned_products = {}
         for key, value in self.products.items():
             if value and isinstance(value, str) and value.strip():
@@ -360,6 +383,10 @@ class Host:
         products: Dict[str, str] = {}
 
         for k, v in row.items():
+            # Skip None keys (can happen with malformed CSV)
+            if k is None:
+                continue
+
             if isinstance(v, str):
                 clean_value = v.strip() if v is not None else None
             else:

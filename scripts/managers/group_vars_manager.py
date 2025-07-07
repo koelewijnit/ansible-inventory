@@ -1,12 +1,9 @@
+import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, List, Optional
 
-import yaml
-import re
-import shutil
-
-from core import ensure_directory_exists, get_logger
+from core import get_logger
 from core.config import load_config
 from core.models import Host
 

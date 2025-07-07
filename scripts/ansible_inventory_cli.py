@@ -178,6 +178,7 @@ class ModularInventoryCLI:
         self.logger = get_logger(__name__)
         self.command_registry = CommandRegistry()
         self.start_time = time.time()
+        self._last_command = None
 
     def create_parser(self) -> argparse.ArgumentParser:
         """Create the main argument parser with all subcommands."""
@@ -278,10 +279,16 @@ https://github.com/your-org/inventory-structure
             # Let the command class add its arguments
             if command_class:
                 try:
-                    temp_command = command_class()
-                    temp_command.add_parser_arguments(command_parser)
+                    # Try to use static method first, fall back to instance method
+                    if hasattr(command_class, "add_parser_arguments_static"):
+                        command_class.add_parser_arguments_static(command_parser)
+                    else:
+                        temp_command = command_class()
+                        temp_command.add_parser_arguments(command_parser)
                 except Exception as e:
-                    self.logger.warning(f"Failed to initialize command {command_name}: {e}")
+                    self.logger.warning(
+                        f"Failed to initialize command {command_name}: {e}"
+                    )
                     # Create a minimal parser as fallback
                     pass
 
@@ -300,6 +307,9 @@ https://github.com/your-org/inventory-structure
             command = self.command_registry.create_command(
                 args.command, args.csv_file, self.logger
             )
+
+            # Store command instance for reuse in formatting
+            self._last_command = command
 
             # Execute the command
             result = command.execute(args)
@@ -331,9 +341,13 @@ https://github.com/your-org/inventory-structure
         command_name = getattr(args, "command", None)
         if command_name:
             try:
-                command = self.command_registry.create_command(
-                    command_name, getattr(args, "csv_file", None), self.logger
-                )
+                # Reuse the command instance if available
+                command = getattr(self, "_last_command", None)
+                if command is None:
+                    command = self.command_registry.create_command(
+                        command_name, getattr(args, "csv_file", None), self.logger
+                    )
+
                 if hasattr(command, "format_text_output"):
                     output = command.format_text_output(result)
                     if not isinstance(output, str):

@@ -5,21 +5,21 @@ This module contains shared functionality used across multiple inventory
 management scripts to eliminate code duplication and ensure consistency.
 """
 
+import contextlib
 import csv
+import fcntl
 import logging
 import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Generator
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 import yaml
-import fcntl
-import contextlib
-import time
 
 from .models import ValidationResult
 
@@ -111,6 +111,30 @@ def load_csv_data(
         FileNotFoundError: If CSV file doesn't exist.
         ValueError: If required fields are missing.
     """
+    csv_file = _resolve_csv_file(csv_file)
+
+    try:
+        with file_lock(csv_file, "r", timeout=10) as f:
+            reader = csv.DictReader(f)
+            _validate_csv_fields(reader, required_fields)
+            hosts = _process_csv_rows(reader, inventory_key)
+
+            log_security_event(
+                "CSV_READ", f"Successfully loaded {len(hosts)} hosts from {csv_file}"
+            )
+            return hosts
+
+    except TimeoutError:
+        log_security_event(
+            "FILE_LOCK_TIMEOUT", f"Could not acquire lock on {csv_file}", "ERROR"
+        )
+        raise
+    except csv.Error as e:
+        raise ValueError(f"CSV parsing error: {e}")
+
+
+def _resolve_csv_file(csv_file: Optional[Path]) -> Path:
+    """Resolve and validate CSV file path."""
     if csv_file is None:
         csv_file = CSV_FILE
     else:
@@ -119,52 +143,73 @@ def load_csv_data(
     if not csv_file.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_file}")
 
-    try:
-        with file_lock(csv_file, "r", timeout=10) as f:
-            reader = csv.DictReader(f)
+    return csv_file
 
-            # Validate required fields
-            if required_fields:
-                missing_fields = set(required_fields) - set(reader.fieldnames or [])
-                if missing_fields:
-                    raise ValueError(f"Missing required CSV fields: {missing_fields}")
 
-            # Load and filter data
-            hosts: List[Dict[str, str]] = []
-            for row_num, row in enumerate(
-                reader, start=2
-            ):  # Start at 2 (header is row 1)
-                # Get the primary identifier based on inventory key
-                hostname = row.get("hostname", "").strip()
-                cname = row.get("cname", "").strip()
+def _validate_csv_fields(
+    reader: csv.DictReader, required_fields: Optional[List[str]]
+) -> None:
+    """Validate that required fields are present in CSV."""
+    if required_fields:
+        missing_fields = set(required_fields) - set(reader.fieldnames or [])
+        if missing_fields:
+            raise ValueError(f"Missing required CSV fields: {missing_fields}")
 
-                # Skip comments and empty rows
-                # For both hostname and cname modes, we use fallback logic
-                if inventory_key == "cname":
-                    primary_id = cname or hostname
-                else:
-                    primary_id = hostname or cname
 
-                if not primary_id or primary_id.startswith("#"):
-                    continue
+def _process_csv_rows(
+    reader: csv.DictReader, inventory_key: str
+) -> List[Dict[str, str]]:
+    """Process CSV rows and return cleaned data."""
+    hosts: List[Dict[str, str]] = []
 
-                # Clean up all string values and handle product_id as a list
-                cleaned_row = {}
-                for k, v in row.items():
-                    if k == "product_id" and v:
-                        cleaned_row[k] = ",".join(item.strip() for item in v.split(","))
-                    else:
-                        cleaned_row[k] = v.strip() if isinstance(v, str) and v else ""
-                hosts.append(cleaned_row)
+    for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is row 1)
+        primary_id = _extract_primary_identifier(row, inventory_key)
 
-            log_security_event("CSV_READ", f"Successfully loaded {len(hosts)} hosts from {csv_file}")
-            return hosts
+        # Skip comments and empty rows
+        if not primary_id or primary_id.startswith("#"):
+            continue
 
-    except TimeoutError:
-        log_security_event("FILE_LOCK_TIMEOUT", f"Could not acquire lock on {csv_file}", "ERROR")
-        raise
-    except csv.Error as e:
-        raise ValueError(f"CSV parsing error: {e}")
+        cleaned_row = _clean_csv_row(row)
+        hosts.append(cleaned_row)
+
+    return hosts
+
+
+def _extract_primary_identifier(row: Dict[str, str], inventory_key: str) -> str:
+    """Extract the primary identifier from a CSV row."""
+    hostname = row.get("hostname", "") or ""
+    cname = row.get("cname", "") or ""
+
+    # Safe strip operation - handle None values
+    hostname = hostname.strip() if hostname else ""
+    cname = cname.strip() if cname else ""
+
+    # For both hostname and cname modes, we use fallback logic
+    if inventory_key == "cname":
+        return cname or hostname
+    else:
+        return hostname or cname
+
+
+def _clean_csv_row(row: Dict[str, str]) -> Dict[str, str]:
+    """Clean up a single CSV row."""
+    cleaned_row = {}
+
+    for k, v in row.items():
+        if k == "product_id" and v:
+            # Handle None values in product_id
+            if v is None:
+                cleaned_row[k] = ""
+            else:
+                cleaned_row[k] = ",".join(item.strip() for item in str(v).split(","))
+        else:
+            # Safe handling of None values
+            if v is None:
+                cleaned_row[k] = ""
+            else:
+                cleaned_row[k] = str(v).strip() if str(v) else ""
+
+    return cleaned_row
 
 
 def validate_hostname_decorator(func: Any) -> Any:
@@ -641,18 +686,26 @@ def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
                     try:
                         schema = get_inventory_config_schema()
                         validation_result = validate_yaml_config(data, schema)
-                        
+
                         if not validation_result.success:
-                            log_security_event("CONFIG_VALIDATION_FAILED", 
-                                             f"Configuration validation failed for {file_path}", "ERROR")
-                            logger.error(f"Configuration validation failed: {validation_result.errors}")
+                            log_security_event(
+                                "CONFIG_VALIDATION_FAILED",
+                                f"Configuration validation failed for {file_path}",
+                                "ERROR",
+                            )
+                            logger.error(
+                                f"Configuration validation failed: {validation_result.errors}"
+                            )
                             return None
-                        
+
                         if validation_result.warnings:
                             for warning in validation_result.warnings:
                                 logger.warning(f"Configuration warning: {warning}")
-                        
-                        log_security_event("CONFIG_VALIDATED", f"Configuration validated successfully: {file_path}")
+
+                        log_security_event(
+                            "CONFIG_VALIDATED",
+                            f"Configuration validated successfully: {file_path}",
+                        )
                     except Exception as e:
                         logger.error(f"Configuration validation error: {e}")
                         return None
@@ -660,7 +713,9 @@ def load_yaml_file(file_path: str) -> Optional[Dict[str, Any]]:
                 logger.debug(f"Successfully loaded YAML file: {file_path}")
                 return data
         except TimeoutError:
-            log_security_event("FILE_LOCK_TIMEOUT", f"Could not acquire lock on {file_path}", "ERROR")
+            log_security_event(
+                "FILE_LOCK_TIMEOUT", f"Could not acquire lock on {file_path}", "ERROR"
+            )
             logger.error(f"Could not acquire file lock for {file_path}")
             return None
 
@@ -947,33 +1002,35 @@ def create_csv_file(file_path: Path, overwrite: bool = False) -> bool:
         raise ValueError(f"Failed to create CSV file: {e}")
 
 
-def get_secure_user_input(prompt: str, max_length: int = 10, timeout: int = 30) -> Optional[str]:
+def get_secure_user_input(
+    prompt: str, max_length: int = 10, timeout: int = 30
+) -> Optional[str]:
     """Get user input with length validation and timeout protection.
-    
+
     Args:
         prompt: The prompt to display to the user
         max_length: Maximum allowed input length (default: 10)
         timeout: Timeout in seconds (default: 30)
-        
+
     Returns:
         User input string or None if cancelled/invalid
-        
+
     Raises:
         TimeoutError: If input times out
         ValueError: If input exceeds length limit
     """
     import signal
-    
+
     def timeout_handler(signum, frame):
         raise TimeoutError("Input timeout")
-    
+
     logger = get_logger(__name__)
-    
+
     try:
         # Set timeout alarm
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(timeout)
-        
+
         try:
             user_input = input(prompt).strip()
         except (KeyboardInterrupt, EOFError):
@@ -983,23 +1040,27 @@ def get_secure_user_input(prompt: str, max_length: int = 10, timeout: int = 30) 
             # Restore original signal handler and cancel alarm
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
-        
+
         # Validate input length
         if len(user_input) > max_length:
             log_security_event(
-                "INPUT_VALIDATION", 
+                "INPUT_VALIDATION",
                 f"Input length exceeded: {len(user_input)} > {max_length}",
-                "WARNING"
+                "WARNING",
             )
-            raise SecurityError(f"Input exceeds maximum length of {max_length} characters")
-        
+            raise SecurityError(
+                f"Input exceeds maximum length of {max_length} characters"
+            )
+
         # Log security event
         log_security_event("USER_INPUT", f"Input received (length: {len(user_input)})")
-        
+
         return user_input
-        
+
     except TimeoutError:
-        log_security_event("INPUT_TIMEOUT", f"User input timed out after {timeout} seconds", "WARNING")
+        log_security_event(
+            "INPUT_TIMEOUT", f"User input timed out after {timeout} seconds", "WARNING"
+        )
         raise
     except Exception as e:
         log_security_event("INPUT_ERROR", f"Error getting user input: {e}", "ERROR")
@@ -1008,27 +1069,30 @@ def get_secure_user_input(prompt: str, max_length: int = 10, timeout: int = 30) 
 
 class SecurityError(Exception):
     """Raised when a security violation is detected."""
+
     pass
 
 
 class ValidationError(Exception):
     """Raised when data validation fails."""
+
     pass
 
 
 class ConfigurationError(Exception):
     """Raised when configuration is invalid or missing."""
+
     pass
 
 
 def handle_file_operation_errors(func):
     """Decorator to standardize file operation error handling.
-    
+
     Converts common file operation exceptions into standardized errors
     with consistent logging and error messages.
     """
     from functools import wraps
-    
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger = get_logger(func.__module__)
@@ -1050,14 +1114,14 @@ def handle_file_operation_errors(func):
             error_msg = f"Unexpected error in {func.__name__}: {e}"
             logger.error(error_msg, exc_info=True)
             raise RuntimeError(error_msg) from e
-    
+
     return wrapper
 
 
 def handle_validation_errors(func):
     """Decorator to standardize validation error handling."""
     from functools import wraps
-    
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         logger = get_logger(func.__module__)
@@ -1071,13 +1135,13 @@ def handle_validation_errors(func):
             error_msg = f"Unexpected validation error in {func.__name__}: {e}"
             logger.error(error_msg, exc_info=True)
             raise ValidationError(error_msg) from e
-    
+
     return wrapper
 
 
 def log_security_event(event_type: str, details: str, level: str = "INFO") -> None:
     """Log security-related events with standardized format.
-    
+
     Args:
         event_type: Type of security event (e.g., "INPUT_VALIDATION", "FILE_ACCESS")
         details: Details about the event
@@ -1091,29 +1155,29 @@ def log_security_event(event_type: str, details: str, level: str = "INFO") -> No
 @contextlib.contextmanager
 def file_lock(file_path: Path, mode: str = "r", timeout: int = 30) -> Generator:
     """Context manager for file locking to prevent concurrent access.
-    
+
     Args:
         file_path: Path to the file to lock
         mode: File open mode (r, w, a, etc.)
         timeout: Maximum time to wait for lock (seconds)
-        
+
     Yields:
         Open file handle with exclusive lock
-        
+
     Raises:
         TimeoutError: If lock cannot be acquired within timeout
         OSError: If file operations fail
     """
     import time
-    
+
     logger = get_logger(__name__)
     file_handle = None
     start_time = time.time()
-    
+
     try:
         # Open file
         file_handle = open(file_path, mode, encoding="utf-8")
-        
+
         # Try to acquire lock with timeout
         while True:
             try:
@@ -1124,11 +1188,13 @@ def file_lock(file_path: Path, mode: str = "r", timeout: int = 30) -> Generator:
             except OSError:
                 # Lock not available, check timeout
                 if time.time() - start_time > timeout:
-                    raise TimeoutError(f"Could not acquire file lock within {timeout} seconds")
+                    raise TimeoutError(
+                        f"Could not acquire file lock within {timeout} seconds"
+                    )
                 time.sleep(0.1)  # Wait 100ms before retry
-        
+
         yield file_handle
-        
+
     finally:
         if file_handle:
             try:
@@ -1141,51 +1207,67 @@ def file_lock(file_path: Path, mode: str = "r", timeout: int = 30) -> Generator:
                 file_handle.close()
 
 
-def validate_yaml_config(config_data: Dict[str, Any], schema: Dict[str, Any]) -> ValidationResult:
+def validate_yaml_config(
+    config_data: Dict[str, Any], schema: Dict[str, Any]
+) -> ValidationResult:
     """Validate YAML configuration against a schema.
-    
+
     Args:
         config_data: The configuration data to validate
         schema: The schema to validate against
-        
+
     Returns:
         ValidationResult with success status and any errors
     """
     errors = []
     warnings = []
-    
-    def _validate_field(data: Any, field_schema: Dict[str, Any], field_path: str = "") -> None:
+
+    def _validate_field(
+        data: Any, field_schema: Dict[str, Any], field_path: str = ""
+    ) -> None:
         """Recursively validate a field against its schema."""
         field_type = field_schema.get("type")
         required = field_schema.get("required", False)
-        
+
         # Check if field is required
         if required and data is None:
             errors.append(f"Required field missing: {field_path}")
             return
-        
+
         # Skip validation if field is optional and not present
         if data is None:
             return
-        
+
         # Type validation
         if field_type == "string" and not isinstance(data, str):
-            errors.append(f"Field {field_path} must be a string, got {type(data).__name__}")
+            errors.append(
+                f"Field {field_path} must be a string, got {type(data).__name__}"
+            )
         elif field_type == "integer" and not isinstance(data, int):
-            errors.append(f"Field {field_path} must be an integer, got {type(data).__name__}")
+            errors.append(
+                f"Field {field_path} must be an integer, got {type(data).__name__}"
+            )
         elif field_type == "boolean" and not isinstance(data, bool):
-            errors.append(f"Field {field_path} must be a boolean, got {type(data).__name__}")
+            errors.append(
+                f"Field {field_path} must be a boolean, got {type(data).__name__}"
+            )
         elif field_type == "list" and not isinstance(data, list):
-            errors.append(f"Field {field_path} must be a list, got {type(data).__name__}")
+            errors.append(
+                f"Field {field_path} must be a list, got {type(data).__name__}"
+            )
         elif field_type == "dict" and not isinstance(data, dict):
-            errors.append(f"Field {field_path} must be a dictionary, got {type(data).__name__}")
-        
+            errors.append(
+                f"Field {field_path} must be a dictionary, got {type(data).__name__}"
+            )
+
         # Value validation
         if "allowed_values" in field_schema:
             if data not in field_schema["allowed_values"]:
-                errors.append(f"Field {field_path} has invalid value '{data}'. "
-                            f"Allowed values: {field_schema['allowed_values']}")
-        
+                errors.append(
+                    f"Field {field_path} has invalid value '{data}'. "
+                    f"Allowed values: {field_schema['allowed_values']}"
+                )
+
         # Length validation for strings
         if field_type == "string" and isinstance(data, str):
             min_length = field_schema.get("min_length")
@@ -1194,47 +1276,54 @@ def validate_yaml_config(config_data: Dict[str, Any], schema: Dict[str, Any]) ->
                 errors.append(f"Field {field_path} too short (min {min_length} chars)")
             if max_length and len(data) > max_length:
                 errors.append(f"Field {field_path} too long (max {max_length} chars)")
-        
+
         # Pattern validation for strings
-        if field_type == "string" and isinstance(data, str) and "pattern" in field_schema:
+        if (
+            field_type == "string"
+            and isinstance(data, str)
+            and "pattern" in field_schema
+        ):
             import re
+
             if not re.match(field_schema["pattern"], data):
                 errors.append(f"Field {field_path} does not match required pattern")
-        
+
         # Recursive validation for nested objects
-        if field_type == "dict" and isinstance(data, dict) and "properties" in field_schema:
+        if (
+            field_type == "dict"
+            and isinstance(data, dict)
+            and "properties" in field_schema
+        ):
             for prop_name, prop_schema in field_schema["properties"].items():
                 prop_path = f"{field_path}.{prop_name}" if field_path else prop_name
                 _validate_field(data.get(prop_name), prop_schema, prop_path)
-        
+
         # Validation for list items
         if field_type == "list" and isinstance(data, list) and "items" in field_schema:
             for i, item in enumerate(data):
                 item_path = f"{field_path}[{i}]" if field_path else f"[{i}]"
                 _validate_field(item, field_schema["items"], item_path)
-    
+
     # Validate root level
     for field_name, field_schema in schema.get("properties", {}).items():
         _validate_field(config_data.get(field_name), field_schema, field_name)
-    
+
     # Check for unexpected fields
     if "properties" in schema:
         expected_fields = set(schema["properties"].keys())
         actual_fields = set(config_data.keys())
         unexpected_fields = actual_fields - expected_fields
         if unexpected_fields:
-            warnings.append(f"Unexpected configuration fields: {sorted(unexpected_fields)}")
-    
-    return ValidationResult(
-        success=len(errors) == 0,
-        errors=errors,
-        warnings=warnings
-    )
+            warnings.append(
+                f"Unexpected configuration fields: {sorted(unexpected_fields)}"
+            )
+
+    return ValidationResult(success=len(errors) == 0, errors=errors, warnings=warnings)
 
 
 def get_inventory_config_schema() -> Dict[str, Any]:
     """Get the schema for inventory configuration validation.
-    
+
     Returns:
         Dictionary containing the configuration schema
     """
@@ -1246,88 +1335,96 @@ def get_inventory_config_schema() -> Dict[str, Any]:
                 "required": True,
                 "min_length": 1,
                 "max_length": 255,
-                "pattern": r".*\.csv$"
+                "pattern": r".*\.csv$",
             },
             "inventory_output_dir": {
                 "type": "string",
                 "required": True,
                 "min_length": 1,
-                "max_length": 255
+                "max_length": 255,
             },
             "environments": {
                 "type": "list",
                 "required": True,
                 "items": {
                     "type": "string",
-                    "allowed_values": ["development", "test", "acceptance", "production"]
-                }
+                    "allowed_values": [
+                        "development",
+                        "test",
+                        "acceptance",
+                        "production",
+                    ],
+                },
             },
             "backup_retention_days": {
                 "type": "integer",
                 "required": False,
                 "min_value": 1,
-                "max_value": 365
+                "max_value": 365,
             },
             "validation": {
                 "type": "dict",
                 "required": False,
                 "properties": {
-                    "strict_mode": {
-                        "type": "boolean",
-                        "required": False
-                    },
+                    "strict_mode": {"type": "boolean", "required": False},
                     "required_fields": {
                         "type": "list",
                         "required": False,
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        }
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+        },
     }
 
 
 def security_audit_log(operation: str):
     """Decorator to log security-relevant operations.
-    
+
     Args:
         operation: Description of the operation being performed
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            logger = get_logger(func.__module__)
             start_time = time.time()
-            
+
             # Log operation start
-            log_security_event("OPERATION_START", f"{operation} started by {func.__name__}")
-            
+            log_security_event(
+                "OPERATION_START", f"{operation} started by {func.__name__}"
+            )
+
             try:
                 result = func(*args, **kwargs)
-                
+
                 # Log successful completion
                 execution_time = time.time() - start_time
-                log_security_event("OPERATION_SUCCESS", 
-                                 f"{operation} completed successfully in {execution_time:.2f}s")
-                
+                log_security_event(
+                    "OPERATION_SUCCESS",
+                    f"{operation} completed successfully in {execution_time:.2f}s",
+                )
+
                 return result
-                
+
             except Exception as e:
                 # Log operation failure
                 execution_time = time.time() - start_time
-                log_security_event("OPERATION_FAILED", 
-                                 f"{operation} failed after {execution_time:.2f}s: {str(e)}", "ERROR")
+                log_security_event(
+                    "OPERATION_FAILED",
+                    f"{operation} failed after {execution_time:.2f}s: {str(e)}",
+                    "ERROR",
+                )
                 raise
-        
+
         return wrapper
+
     return decorator
 
 
 def log_file_access(file_path: Path, operation: str, success: bool = True) -> None:
     """Log file access operations for security auditing.
-    
+
     Args:
         file_path: Path to the file being accessed
         operation: Type of operation (READ, WRITE, DELETE, etc.)
@@ -1339,7 +1436,7 @@ def log_file_access(file_path: Path, operation: str, success: bool = True) -> No
 
 def log_authentication_event(event_type: str, details: str) -> None:
     """Log authentication-related events.
-    
+
     Args:
         event_type: Type of auth event (LOGIN, LOGOUT, AUTH_FAILURE, etc.)
         details: Additional details about the event
@@ -1347,55 +1444,64 @@ def log_authentication_event(event_type: str, details: str) -> None:
     log_security_event(f"AUTH_{event_type}", details)
 
 
-def log_data_modification(table_or_file: str, operation: str, record_count: int = 1) -> None:
+def log_data_modification(
+    table_or_file: str, operation: str, record_count: int = 1
+) -> None:
     """Log data modification operations.
-    
+
     Args:
         table_or_file: Name of the table or file being modified
         operation: Type of operation (INSERT, UPDATE, DELETE)
         record_count: Number of records affected
     """
-    log_security_event("DATA_MODIFICATION", 
-                     f"{operation} {record_count} records in {table_or_file}")
+    log_security_event(
+        "DATA_MODIFICATION", f"{operation} {record_count} records in {table_or_file}"
+    )
 
 
 def check_file_permissions(file_path: Path) -> bool:
     """Check if file has secure permissions and log security events.
-    
+
     Args:
         file_path: Path to the file to check
-        
+
     Returns:
         True if permissions are secure, False otherwise
     """
     import stat
-    
-    logger = get_logger(__name__)
-    
+
     try:
         file_stat = file_path.stat()
         file_mode = file_stat.st_mode
-        
+
         # Check if file is world-readable or world-writable
         if file_mode & stat.S_IROTH:
-            log_security_event("INSECURE_PERMISSIONS", 
-                             f"File {file_path} is world-readable", "WARNING")
+            log_security_event(
+                "INSECURE_PERMISSIONS", f"File {file_path} is world-readable", "WARNING"
+            )
             return False
-        
+
         if file_mode & stat.S_IWOTH:
-            log_security_event("INSECURE_PERMISSIONS", 
-                             f"File {file_path} is world-writable", "ERROR")
+            log_security_event(
+                "INSECURE_PERMISSIONS", f"File {file_path} is world-writable", "ERROR"
+            )
             return False
-        
+
         # Check if file is group-writable (might be acceptable in some cases)
         if file_mode & stat.S_IWGRP:
-            log_security_event("INSECURE_PERMISSIONS", 
-                             f"File {file_path} is group-writable", "WARNING")
-        
-        log_security_event("SECURE_PERMISSIONS", f"File {file_path} has secure permissions")
+            log_security_event(
+                "INSECURE_PERMISSIONS", f"File {file_path} is group-writable", "WARNING"
+            )
+
+        log_security_event(
+            "SECURE_PERMISSIONS", f"File {file_path} has secure permissions"
+        )
         return True
-        
+
     except OSError as e:
-        log_security_event("PERMISSION_CHECK_FAILED", 
-                         f"Could not check permissions for {file_path}: {e}", "ERROR")
+        log_security_event(
+            "PERMISSION_CHECK_FAILED",
+            f"Could not check permissions for {file_path}: {e}",
+            "ERROR",
+        )
         return False
