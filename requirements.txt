@@ -1,1 +1,2 @@
-pyyaml
+PyYAML>=6.0
+pathlib2>=2.3.0; python_version<'3.4'

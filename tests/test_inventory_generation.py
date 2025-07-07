@@ -10,12 +10,14 @@ from scripts.managers.validation_manager import ValidationManager
 
 
 def create_csv(tmp_path: Path, rows: List[str]) -> Path:
+    """Create a temporary CSV file with the given rows for testing."""
     csv_file = tmp_path / "hosts.csv"
     csv_file.write_text("\n".join(rows))
     return csv_file
 
 
 def test_generate_inventory(tmp_path: Path):
+    """Test basic inventory generation from CSV data."""
     rows = [
         "hostname,environment,status,cname",
         "web01,production,active,",
@@ -52,6 +54,7 @@ def test_generate_inventory(tmp_path: Path):
 
 
 def test_validate_csv_duplicates(tmp_path: Path):
+    """Test validation catches duplicate hostnames in CSV data."""
     rows = [
         "hostname,environment,status,cname",
         "dup,production,active,",
@@ -65,6 +68,7 @@ def test_validate_csv_duplicates(tmp_path: Path):
 
 
 def test_load_csv_data_malformed(tmp_path: Path):
+    """Test loading CSV data handles malformed rows gracefully."""
     rows = [
         "hostname,environment,status",
         "badrow",  # malformed row

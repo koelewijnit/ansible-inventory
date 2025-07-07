@@ -414,7 +414,7 @@ echo "*.secret" >> .gitignore
 echo ".env" >> .gitignore
 
 # Use environment variables
-export ANSIBLE_VAULT_PASSWORD="secure_password"
+export ANSIBLE_VAULT_PASSWORD="your_secure_password_here"
 
 # Or vault files
 ansible-vault create secrets.yml
