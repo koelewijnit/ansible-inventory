@@ -1,12 +1,9 @@
+import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, List, Optional
 
-import yaml
-import re
-import shutil
-
-from core import ensure_directory_exists, get_logger
+from core import get_logger
 from core.config import load_config
 from core.models import Host
 
@@ -45,7 +42,7 @@ class GroupVarsManager:
                 required_group_names.add(f"env_{host.environment}.yml")
             if host.application_service:
                 required_group_names.add(f"app_{host.application_service}.yml")
-            if host.product_id:
+            if host.get_product_ids():
                 for prod_id in host.get_product_ids():
                     required_group_names.add(f"product_{prod_id}.yml")
             if host.site_code:

@@ -223,20 +223,25 @@ class ValidateCommand(BaseCommand):
         # Handle template output
         if "template" in data:
             return f"📄 CSV Template:\n\n{data['template']}"
-        validation_results = data.get("validation_results", {})
-        summary = data.get("summary", {})
+
+        lines = []
 
         # Header
-        overall_status = summary.get("overall_status", "UNKNOWN")
-        status_emoji = "✅" if overall_status == "PASSED" else "❌"
+        lines.append("🔍 INVENTORY VALIDATION RESULTS")
 
-        lines = [
-            "🔍 INVENTORY VALIDATION RESULTS",
-            f"Overall Status: {status_emoji} {overall_status}",
-            f"Total Errors: {summary.get('total_errors', 0)}",
-            f"Total Warnings: {summary.get('total_warnings', 0)}",
-            "",
-        ]
+        summary = data.get("summary", {})
+        overall_status = summary.get("overall_status", "UNKNOWN")
+        total_errors = summary.get("total_errors", 0)
+        total_warnings = summary.get("total_warnings", 0)
+
+        status_emoji = "✅" if overall_status == "PASSED" else "❌"
+        lines.append(f"Overall Status: {status_emoji} {overall_status}")
+        lines.append(f"Total Errors: {total_errors}")
+        lines.append(f"Total Warnings: {total_warnings}")
+        lines.append("")
+
+        # Detailed results
+        validation_results = data.get("validation_results", {})
 
         # Structure validation
         if "structure_validation" in validation_results:
@@ -246,18 +251,21 @@ class ValidateCommand(BaseCommand):
             )
             lines.append(f"📁 Structure Validation: {struct_status}")
 
-            if struct_result.get("issues"):
-                lines.append("   Issues:")
-                for issue in struct_result["issues"][:5]:  # Show first 5
-                    lines.append(f"     • {issue}")
+            # Show ansible version if available
+            if "ansible_version" in struct_result:
+                lines.append(f"   Ansible Version: {struct_result['ansible_version']}")
 
+            # Show specific errors
+            if struct_result.get("issues"):
+                lines.append("   Issues found:")
+                for issue in struct_result["issues"]:
+                    lines.append(f"   • {issue}")
+
+            # Show warnings
             if struct_result.get("warnings"):
                 lines.append("   Warnings:")
-                for warning in struct_result["warnings"][:5]:  # Show first 5
-                    lines.append(f"     • {warning}")
-
-            if struct_result.get("ansible_version"):
-                lines.append(f"   Ansible Version: {struct_result['ansible_version']}")
+                for warning in struct_result["warnings"]:
+                    lines.append(f"   ⚠️ {warning}")
 
             lines.append("")
 
@@ -265,17 +273,19 @@ class ValidateCommand(BaseCommand):
         if "csv_validation" in validation_results:
             csv_result = validation_results["csv_validation"]
             csv_status = "✅ PASSED" if csv_result.get("passed", False) else "❌ FAILED"
-            lines.append(f"📄 CSV Data Validation: {csv_status}")
+            lines.append(f"📄 CSV Validation: {csv_status}")
 
+            # Show specific errors
             if csv_result.get("errors"):
-                lines.append("   Errors:")
-                for error in csv_result["errors"][:5]:  # Show first 5
-                    lines.append(f"     • {error}")
+                lines.append("   Errors found:")
+                for error in csv_result["errors"]:
+                    lines.append(f"   • {error}")
 
+            # Show warnings
             if csv_result.get("warnings"):
                 lines.append("   Warnings:")
-                for warning in csv_result["warnings"][:5]:  # Show first 5
-                    lines.append(f"     • {warning}")
+                for warning in csv_result["warnings"]:
+                    lines.append(f"   ⚠️ {warning}")
 
             lines.append("")
 
@@ -283,21 +293,23 @@ class ValidateCommand(BaseCommand):
         if "host_vars_validation" in validation_results:
             hv_result = validation_results["host_vars_validation"]
             hv_status = "✅ PASSED" if hv_result.get("passed", False) else "❌ FAILED"
-            lines.append(f"🖥️  Host Vars Validation: {hv_status}")
+            lines.append(f"🏠 Host Variables Validation: {hv_status}")
 
+            # Show specific errors
             if hv_result.get("errors"):
-                lines.append("   Errors:")
-                for error in hv_result["errors"][:5]:  # Show first 5
-                    lines.append(f"     • {error}")
+                lines.append("   Errors found:")
+                for error in hv_result["errors"]:
+                    lines.append(f"   • {error}")
 
+            # Show warnings
             if hv_result.get("warnings"):
                 lines.append("   Warnings:")
-                for warning in hv_result["warnings"][:5]:  # Show first 5
-                    lines.append(f"     • {warning}")
+                for warning in hv_result["warnings"]:
+                    lines.append(f"   ⚠️ {warning}")
 
             lines.append("")
 
-        # Summary
+        # Final message
         if overall_status == "PASSED":
             lines.append("🎉 All validations passed successfully!")
         else:

@@ -17,13 +17,12 @@ import yaml
 
 from core import CSV_FILE as DEFAULT_CSV_FILE
 from core import (
-    DEFAULT_SUPPORT_GROUP,
     HOST_VARS_HEADER,
     ensure_directory_exists,
     get_logger,
     load_csv_data,
 )
-from core.config import load_config, get_environment_info_from_code
+from core.config import get_environment_info_from_code, load_config
 from core.models import Host, InventoryConfig, InventoryStats
 from managers.group_vars_manager import GroupVarsManager
 
@@ -185,6 +184,9 @@ class InventoryManager:
             # Clean up orphaned host_vars files before generating new ones
             orphaned_count = self.cleanup_orphaned_host_vars(hosts, dry_run)
 
+            # Clean up orphaned group_vars files
+            group_orphaned_removed = group_vars_manager.cleanup_orphaned_group_vars(hosts, dry_run)
+
             # Filter environments if specified
             target_environments = environments or self.config.environments
 
@@ -247,8 +249,8 @@ class InventoryManager:
                 "stats": self.stats.__dict__,
                 "environments": target_environments,
                 "orphaned_files_removed": orphaned_count,
-                "group_vars_created": 0,
-                "group_orphaned_removed": 0,
+                "group_vars_created": 0,  # TODO: Implement group vars creation tracking
+                "group_orphaned_removed": group_orphaned_removed,
             }
 
         except FileNotFoundError as e:
@@ -260,7 +262,7 @@ class InventoryManager:
 
     def create_host_vars(self, host: Host, host_vars_dir: Path) -> None:
         """Create host_vars file for a host.
-        
+
         Only writes the file if the content has actually changed, making
         the operation idempotent and more efficient.
         """
@@ -293,7 +295,9 @@ class InventoryManager:
         # If support_group is a host_var, set it to default if missing or empty
         if "support_group" in host_var_fields:
             if not host_vars.get("support_group"):
-                default_support_group = config.get("cmdb", {}).get("default_support_group", "")
+                default_support_group = config.get("cmdb", {}).get(
+                    "default_support_group", ""
+                )
                 host_vars["support_group"] = default_support_group
 
         # Optionally append or prepend short cname to function field
@@ -323,6 +327,7 @@ class InventoryManager:
 
         # Generate the new YAML content
         import io
+
         yaml_buffer = io.StringIO()
         yaml.dump(host_vars, yaml_buffer, default_flow_style=False, sort_keys=True)
         new_yaml_content = yaml_buffer.getvalue()
@@ -337,22 +342,26 @@ class InventoryManager:
             try:
                 with host_vars_file.open("r", encoding="utf-8") as f:
                     existing_lines = f.readlines()
-                
+
                 # Extract existing YAML content (skip header lines)
                 yaml_start_index = None
                 for i, line in enumerate(existing_lines):
                     if line.strip() == "" and i > 0:
                         yaml_start_index = i + 1
                         break
-                
+
                 if yaml_start_index is not None:
                     existing_yaml_content = "".join(existing_lines[yaml_start_index:])
                     should_write = existing_yaml_content != new_yaml_content
                     if not should_write:
-                        self.logger.debug(f"Content unchanged for {host_vars_filename}, skipping write")
-                        
+                        self.logger.debug(
+                            f"Content unchanged for {host_vars_filename}, skipping write"
+                        )
+
             except Exception as e:
-                self.logger.debug(f"Could not read existing host_vars file {host_vars_file}: {e}")
+                self.logger.debug(
+                    f"Could not read existing host_vars file {host_vars_file}: {e}"
+                )
                 should_write = True
 
         # Only write if content has changed or file doesn't exist
@@ -421,7 +430,7 @@ class InventoryManager:
         self, inventory: Dict[str, Any], output_file: Path, title: str
     ) -> None:
         """Write inventory to YAML file, omitting empty groups.
-        
+
         Only updates the file if the content has actually changed, preserving
         existing timestamps for idempotent behavior.
         """
@@ -436,49 +445,62 @@ class InventoryManager:
 
         # Generate the new YAML content (without header)
         import io
+
         yaml_buffer = io.StringIO()
-        yaml.dump(filtered_inventory, yaml_buffer, default_flow_style=False, sort_keys=True)
+        yaml.dump(
+            filtered_inventory, yaml_buffer, default_flow_style=False, sort_keys=True
+        )
         new_yaml_content = yaml_buffer.getvalue()
 
         # Check if file exists and extract existing timestamp and content
         existing_timestamp = None
         existing_yaml_content = None
-        
+
         if output_file.exists():
             try:
                 with output_file.open("r", encoding="utf-8") as f:
                     existing_lines = f.readlines()
-                    
+
                 # Extract existing timestamp from header
                 for line in existing_lines:
                     if line.strip().startswith("# Generated at:"):
                         existing_timestamp = line.strip()
                         break
-                
+
                 # Extract existing YAML content (everything after the header)
                 yaml_start_index = None
                 for i, line in enumerate(existing_lines):
-                    if line.strip() == "" and i > 0 and existing_lines[i-1].strip().startswith("# Generated at:"):
+                    if (
+                        line.strip() == ""
+                        and i > 0
+                        and existing_lines[i - 1].strip().startswith("# Generated at:")
+                    ):
                         yaml_start_index = i + 1
                         break
-                
+
                 if yaml_start_index is not None:
                     existing_yaml_content = "".join(existing_lines[yaml_start_index:])
-                    
+
             except Exception as e:
                 self.logger.debug(f"Could not read existing file {output_file}: {e}")
 
         # Compare YAML content to determine if we need to update
         content_changed = existing_yaml_content != new_yaml_content
-        
+
         # Use existing timestamp if content hasn't changed, otherwise generate new one
         if not content_changed and existing_timestamp:
             timestamp_line = existing_timestamp
-            self.logger.debug(f"Content unchanged for {output_file.name}, preserving existing timestamp")
+            self.logger.debug(
+                f"Content unchanged for {output_file.name}, preserving existing timestamp"
+            )
         else:
-            timestamp_line = f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            timestamp_line = (
+                f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
             if content_changed:
-                self.logger.debug(f"Content changed for {output_file.name}, updating timestamp")
+                self.logger.debug(
+                    f"Content changed for {output_file.name}, updating timestamp"
+                )
             else:
                 self.logger.debug(f"New file {output_file.name}, generating timestamp")
 

@@ -24,7 +24,11 @@ from core import CSV_FILE as DEFAULT_CSV_FILE  # noqa: E402
 from core import get_logger  # noqa: E402
 from core.config import PROJECT_ROOT  # noqa: E402
 from core.models import InventoryConfig  # noqa: E402
-from core.utils import security_audit_log, log_data_modification, log_file_access  # noqa: E402
+from core.utils import (  # noqa: E402
+    log_data_modification,
+    log_file_access,
+    security_audit_log,
+)
 
 
 class HostManager:
@@ -93,8 +97,12 @@ class HostManager:
                 original_fieldnames = (
                     list(reader.fieldnames) if reader.fieldnames else []
                 )
-        except Exception:
-            pass
+        except (OSError, IOError) as e:
+            self.logger.warning(f"Could not read original fieldnames from {self.csv_file}: {e}")
+            original_fieldnames = []
+        except Exception as e:
+            self.logger.error(f"Unexpected error reading CSV file: {e}")
+            original_fieldnames = []
 
         # If no original fieldnames, use the keys from first host
         fieldnames = (
@@ -283,10 +291,11 @@ class HostManager:
         if not auto_confirm:
             try:
                 from core.utils import get_secure_user_input
+
                 response = get_secure_user_input(
                     f"Clean up {len(expired_hosts)} expired hosts? [y/N]: ",
                     max_length=5,  # Allow for "yes", "y", "no", "n"
-                    timeout=60
+                    timeout=60,
                 )
                 # Only accept 'y' or 'Y' for confirmation
                 if not response or response.lower() != "y":
