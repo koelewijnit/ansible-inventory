@@ -25,4 +25,4 @@ alwaysApply: true
 1. Prefer searching the code over querying user.  
 2. Parallelize read-only tool calls.  
 3. After code edits, explain what changed and why.  
-4. Limit answers to ≤ _Yap_ words unless the user asks for depth.
+4. Limit answers to ≤ 400 words unless the user asks for depth.
