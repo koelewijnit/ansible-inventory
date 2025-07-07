@@ -64,6 +64,14 @@ Common questions and answers:
 - Usage questions
 - Troubleshooting questions
 
+### [Troubleshooting Guide](troubleshooting.md)
+Comprehensive troubleshooting for common issues:
+- Installation and setup problems
+- CSV file issues and validation errors
+- Ansible integration problems
+- Performance and configuration issues
+- Debug tools and health monitoring
+
 ### [User Guide](USER_GUIDE.md)
 Comprehensive user manual with:
 - Detailed explanations
@@ -180,7 +188,8 @@ make help
 - **CSV parsing errors**: Check [CSV Format Reference](csv_format.md)
 - **Missing group_vars**: See [Getting Started Guide](getting-started.md#step-4-create-group-variables-files)
 - **Configuration issues**: Review [Configuration Guide](configuration.md)
-- **Targeting problems**: Check [Usage Guide](usage.md#advanced-targeting)
+- **Installation problems**: See [Installation Guide](installation.md) and [Troubleshooting Guide](troubleshooting.md)
+- **System errors**: Check [Troubleshooting Guide](troubleshooting.md) for comprehensive solutions
 
 ## 🎉 Welcome!
 
