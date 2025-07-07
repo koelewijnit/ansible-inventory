@@ -259,7 +259,11 @@ class InventoryManager:
             raise ValueError(f"Failed to generate inventories: {e}") from e
 
     def create_host_vars(self, host: Host, host_vars_dir: Path) -> None:
-        """Create host_vars file for a host."""
+        """Create host_vars file for a host.
+        
+        Only writes the file if the content has actually changed, making
+        the operation idempotent and more efficient.
+        """
         ensure_directory_exists(str(host_vars_dir))
 
         # Get the primary identifier for this host based on inventory key
@@ -317,15 +321,49 @@ class InventoryManager:
             if key not in all_configured_fields:
                 host_vars[key] = value
 
+        # Generate the new YAML content
+        import io
+        yaml_buffer = io.StringIO()
+        yaml.dump(host_vars, yaml_buffer, default_flow_style=False, sort_keys=True)
+        new_yaml_content = yaml_buffer.getvalue()
+
         # Use the inventory key-based filename
         host_vars_filename = host.get_host_vars_filename(self.config.inventory_key)
         host_vars_file: Path = host_vars_dir / host_vars_filename
-        with host_vars_file.open("w", encoding="utf-8") as f:
-            f.write("---\n")
-            f.write(f"# Host variables for {primary_id}\n")
-            f.write(f"# {HOST_VARS_HEADER}\n")
-            f.write("\n")
-            yaml.dump(host_vars, f, default_flow_style=False, sort_keys=True)
+
+        # Check if file exists and compare content
+        should_write = True
+        if host_vars_file.exists():
+            try:
+                with host_vars_file.open("r", encoding="utf-8") as f:
+                    existing_lines = f.readlines()
+                
+                # Extract existing YAML content (skip header lines)
+                yaml_start_index = None
+                for i, line in enumerate(existing_lines):
+                    if line.strip() == "" and i > 0:
+                        yaml_start_index = i + 1
+                        break
+                
+                if yaml_start_index is not None:
+                    existing_yaml_content = "".join(existing_lines[yaml_start_index:])
+                    should_write = existing_yaml_content != new_yaml_content
+                    if not should_write:
+                        self.logger.debug(f"Content unchanged for {host_vars_filename}, skipping write")
+                        
+            except Exception as e:
+                self.logger.debug(f"Could not read existing host_vars file {host_vars_file}: {e}")
+                should_write = True
+
+        # Only write if content has changed or file doesn't exist
+        if should_write:
+            with host_vars_file.open("w", encoding="utf-8") as f:
+                f.write("---\n")
+                f.write(f"# Host variables for {primary_id}\n")
+                f.write(f"# {HOST_VARS_HEADER}\n")
+                f.write("\n")
+                f.write(new_yaml_content)
+            self.logger.debug(f"Updated host_vars file: {host_vars_filename}")
 
     def build_environment_inventory(
         self, hosts: List[Host], environment: str
@@ -382,7 +420,11 @@ class InventoryManager:
     def write_inventory_file(
         self, inventory: Dict[str, Any], output_file: Path, title: str
     ) -> None:
-        """Write inventory to YAML file, omitting empty groups."""
+        """Write inventory to YAML file, omitting empty groups.
+        
+        Only updates the file if the content has actually changed, preserving
+        existing timestamps for idempotent behavior.
+        """
         ensure_directory_exists(str(output_file.parent))
 
         # Remove groups with no hosts
@@ -392,6 +434,55 @@ class InventoryManager:
             if hosts and len(hosts) > 0:
                 filtered_inventory[group] = data
 
+        # Generate the new YAML content (without header)
+        import io
+        yaml_buffer = io.StringIO()
+        yaml.dump(filtered_inventory, yaml_buffer, default_flow_style=False, sort_keys=True)
+        new_yaml_content = yaml_buffer.getvalue()
+
+        # Check if file exists and extract existing timestamp and content
+        existing_timestamp = None
+        existing_yaml_content = None
+        
+        if output_file.exists():
+            try:
+                with output_file.open("r", encoding="utf-8") as f:
+                    existing_lines = f.readlines()
+                    
+                # Extract existing timestamp from header
+                for line in existing_lines:
+                    if line.strip().startswith("# Generated at:"):
+                        existing_timestamp = line.strip()
+                        break
+                
+                # Extract existing YAML content (everything after the header)
+                yaml_start_index = None
+                for i, line in enumerate(existing_lines):
+                    if line.strip() == "" and i > 0 and existing_lines[i-1].strip().startswith("# Generated at:"):
+                        yaml_start_index = i + 1
+                        break
+                
+                if yaml_start_index is not None:
+                    existing_yaml_content = "".join(existing_lines[yaml_start_index:])
+                    
+            except Exception as e:
+                self.logger.debug(f"Could not read existing file {output_file}: {e}")
+
+        # Compare YAML content to determine if we need to update
+        content_changed = existing_yaml_content != new_yaml_content
+        
+        # Use existing timestamp if content hasn't changed, otherwise generate new one
+        if not content_changed and existing_timestamp:
+            timestamp_line = existing_timestamp
+            self.logger.debug(f"Content unchanged for {output_file.name}, preserving existing timestamp")
+        else:
+            timestamp_line = f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            if content_changed:
+                self.logger.debug(f"Content changed for {output_file.name}, updating timestamp")
+            else:
+                self.logger.debug(f"New file {output_file.name}, generating timestamp")
+
+        # Write the file with appropriate timestamp
         with output_file.open("w", encoding="utf-8") as f:
             f.write(
                 "# ----------------------------------------------------------------------\n"
@@ -408,9 +499,9 @@ class InventoryManager:
             f.write(
                 "# Generated from enhanced CSV with CMDB and patch management integration\n"
             )
-            f.write(f"# Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"{timestamp_line}\n")
             f.write("\n")
-            yaml.dump(filtered_inventory, f, default_flow_style=False, sort_keys=True)
+            f.write(new_yaml_content)
 
     def _generate_inventory_file(
         self,
