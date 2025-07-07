@@ -198,10 +198,10 @@ class ValidateCommand(BaseCommand):
 
     def format_text_output(self, result: Dict[str, Any]) -> str:
         """Format validation result for text output."""
-        if not result.get("data"):
-            return "❌ No validation data available"
+        if not result.get("success", False) and "error" in result:
+            return f"❌ Validation failed: {result.get('error', 'Unknown error')}"
 
-        data = result["data"]
+        data = result.get("data", {})
 
         # Handle CSV creation output
         if "created_file" in data:
