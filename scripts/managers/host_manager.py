@@ -24,6 +24,7 @@ from core import CSV_FILE as DEFAULT_CSV_FILE  # noqa: E402
 from core import get_logger  # noqa: E402
 from core.config import PROJECT_ROOT  # noqa: E402
 from core.models import InventoryConfig  # noqa: E402
+from core.utils import security_audit_log, log_data_modification, log_file_access  # noqa: E402
 
 
 class HostManager:
@@ -115,8 +116,11 @@ class HostManager:
             writer.writeheader()
             writer.writerows(hosts)
 
+        log_data_modification(str(self.csv_file), "UPDATE", len(hosts))
+        log_file_access(self.csv_file, "WRITE", success=True)
         self.logger.info(f"Updated CSV file: {self.csv_file}")
 
+    @security_audit_log("Host decommission operation")
     def decommission_host(
         self, hostname: str, date: str, reason: str = "", dry_run: bool = False
     ) -> bool:
@@ -246,6 +250,7 @@ class HostManager:
 
         return expired_hosts
 
+    @security_audit_log("Expired host cleanup operation")
     def cleanup_expired_hosts(
         self,
         grace_days_override: Optional[int] = None,
@@ -277,13 +282,25 @@ class HostManager:
         # Confirm cleanup unless auto-confirm
         if not auto_confirm:
             try:
-                response = input(
-                    f"Clean up {len(expired_hosts)} expired hosts? [y/N]: "
+                from core.utils import get_secure_user_input
+                response = get_secure_user_input(
+                    f"Clean up {len(expired_hosts)} expired hosts? [y/N]: ",
+                    max_length=5,  # Allow for "yes", "y", "no", "n"
+                    timeout=60
                 )
                 # Only accept 'y' or 'Y' for confirmation
-                if response.strip().lower() != "y":
+                if not response or response.lower() != "y":
                     self.logger.info("Cleanup cancelled by user")
                     return 0
+            except (TimeoutError, ValueError) as e:
+                self.logger.warning(f"Input validation failed: {e}")
+                self.logger.info("Cleanup cancelled due to invalid input")
+                return 0
+            except Exception as e:
+                # Handle SecurityError and other exceptions from secure input
+                self.logger.warning(f"Input security check failed: {e}")
+                self.logger.info("Cleanup cancelled due to security validation")
+                return 0
             except (KeyboardInterrupt, EOFError):
                 self.logger.info("Cleanup cancelled by user")
                 return 0

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Ansible Inventory Management CLI.
+Modular Ansible Inventory CLI.
 
-A comprehensive tool for managing Ansible inventories using CSV data sources
-with a clean modular command architecture.
+A comprehensive command-line interface for managing Ansible inventory files
+with support for multiple data sources and dynamic inventory generation.
 
 Author: J Goossens <jgoos@users.noreply.github.com>
 Version: 2.0.0
@@ -44,7 +44,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Add current directory to path for imports before local imports
+# Ensure sibling modules are importable when this file is imported outside of
+# the `scripts` directory
 SCRIPT_DIR = Path(__file__).parent.absolute()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -276,8 +277,13 @@ https://github.com/your-org/inventory-structure
 
             # Let the command class add its arguments
             if command_class:
-                temp_command = command_class()
-                temp_command.add_parser_arguments(command_parser)
+                try:
+                    temp_command = command_class()
+                    temp_command.add_parser_arguments(command_parser)
+                except Exception as e:
+                    self.logger.warning(f"Failed to initialize command {command_name}: {e}")
+                    # Create a minimal parser as fallback
+                    pass
 
         return parser
 
@@ -325,7 +331,9 @@ https://github.com/your-org/inventory-structure
         command_name = getattr(args, "command", None)
         if command_name:
             try:
-                command = self.command_registry.create_command(command_name)
+                command = self.command_registry.create_command(
+                    command_name, getattr(args, "csv_file", None), self.logger
+                )
                 if hasattr(command, "format_text_output"):
                     output = command.format_text_output(result)
                     if not isinstance(output, str):
