@@ -42,7 +42,7 @@ class GroupVarsManager:
                 required_group_names.add(f"env_{host.environment}.yml")
             if host.application_service:
                 required_group_names.add(f"app_{host.application_service}.yml")
-            if host.product_id:
+            if host.get_product_ids():
                 for prod_id in host.get_product_ids():
                     required_group_names.add(f"product_{prod_id}.yml")
             if host.site_code:

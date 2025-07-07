@@ -179,10 +179,13 @@ class InventoryManager:
             self.logger.info(f"Loaded {len(hosts)} hosts from CSV")
 
             # Initialize GroupVarsManager
-            GroupVarsManager(logger=self.logger)
+            group_vars_manager = GroupVarsManager(logger=self.logger)
 
             # Clean up orphaned host_vars files before generating new ones
             orphaned_count = self.cleanup_orphaned_host_vars(hosts, dry_run)
+
+            # Clean up orphaned group_vars files
+            group_orphaned_removed = group_vars_manager.cleanup_orphaned_group_vars(hosts, dry_run)
 
             # Filter environments if specified
             target_environments = environments or self.config.environments
@@ -246,8 +249,8 @@ class InventoryManager:
                 "stats": self.stats.__dict__,
                 "environments": target_environments,
                 "orphaned_files_removed": orphaned_count,
-                "group_vars_created": 0,
-                "group_orphaned_removed": 0,
+                "group_vars_created": 0,  # TODO: Implement group vars creation tracking
+                "group_orphaned_removed": group_orphaned_removed,
             }
 
         except FileNotFoundError as e:
