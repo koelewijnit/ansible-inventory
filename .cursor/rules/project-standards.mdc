@@ -27,3 +27,4 @@ alwaysApply: true
 3. After code edits, explain what changed and why.  
 4. Limit answers to ≤ 400 words unless the user asks for depth.
 5. **NEVER push to main** - always create feature branches and PRs per git-workflow rules.
+6. **ALWAYS get user approval** before committing or pushing any changes - never assume consent.

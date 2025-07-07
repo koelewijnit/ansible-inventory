@@ -67,7 +67,21 @@ When the AI assistant needs to make changes:
 1. **Always check current branch** before making commits
 2. **Create new branch** if on main: `git checkout -b feature/ai-suggested-changes`
 3. **Never push to main** - always create PR
-4. **Inform user** about branch creation and PR requirements
+4. **ALWAYS get user approval** before committing or pushing any changes
+5. **Show user the changes** and explain what will be committed
+6. **Wait for explicit user confirmation** before running git commit or git push
+7. **Inform user** about branch creation and PR requirements
+
+### **User Review Process**
+Before any git operations:
+- **Present changes** to user for review
+- **Explain the impact** of proposed changes
+- **Ask for explicit approval** with phrases like:
+  - "Ready to commit these changes? (y/n)"
+  - "Should I push this branch? (y/n)"
+  - "Please review the changes above before I commit"
+- **Only proceed** after user gives clear approval (y/yes/proceed/go ahead)
+- **Never assume** user approval - always ask explicitly
 description:
 globs:
 alwaysApply: false
