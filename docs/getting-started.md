@@ -415,15 +415,119 @@ cat inventory-config.yml
 - Use the [CSV Format Reference](csv_format.md) for field details
 - Run `python scripts/ansible_inventory_cli.py --help` for command options
 
+## Adding New Systems - Quick Workflow
+
+Once your system is set up, adding new hosts is simple. Here's the standard workflow:
+
+### 🚀 Quick Workflow: **Add system to CSV** → **Generate inventory** → **Commit to git** → **Push changes**
+
+#### 1. Add System to CSV
+Edit your CSV file:
+```bash
+# Edit the main CSV file
+nano inventory_source/hosts.csv
+```
+
+Add a new row with your system details:
+```csv
+# Example: Adding a new web server
+web03,production,active,web03.example.com,3,use1,443,web_server,web,monitoring,,1,auto,web_servers,nginx,frontend,,frontend,high
+```
+
+#### 2. Generate Inventory Files
+```bash
+# Generate all inventory files
+python scripts/ansible_inventory_cli.py generate
+
+# Or use the Makefile shortcut
+make generate
+```
+
+#### 3. Validate Your Changes
+```bash
+# Validate the CSV and inventory structure
+python scripts/ansible_inventory_cli.py validate
+
+# Check health
+python scripts/ansible_inventory_cli.py health
+
+# Or use Makefile shortcuts
+make validate
+make health-check
+```
+
+#### 4. Commit to Git
+```bash
+# Add the CSV file and generated inventory
+git add inventory_source/hosts.csv inventory/
+
+# Commit with a descriptive message
+git commit -m "Add new system: web03"
+
+# Push to repository
+git push origin main
+```
+
+### 📋 CSV Field Quick Reference
+
+When adding new systems, remember these key fields:
+
+| Field | Required | Example | Description |
+|-------|----------|---------|-------------|
+| `hostname` | ✅ | `web03` | Server name (lowercase, hyphens) |
+| `environment` | ✅ | `production` | Must be: production, development, test, acceptance |
+| `status` | ✅ | `active` | Must be: active, decommissioned |
+| `cname` | ❌ | `web03.example.com` | DNS alias |
+| `product_1` | ❌ | `web` | Primary product/service |
+| `product_2` | ❌ | `monitoring` | Secondary product (optional) |
+| `application_service` | ❌ | `web_server` | Service type |
+| `site_code` | ❌ | `use1` | Datacenter/location |
+
+### 🔍 Troubleshooting Adding Systems
+
+**"Invalid hostname" error:**
+- Use lowercase letters, numbers, and hyphens only
+- Example: `web-03` ✅, `WEB_03` ❌
+
+**"Invalid environment" error:**
+- Use only: `production`, `development`, `test`, `acceptance`
+- Example: `production` ✅, `prod` ❌
+
+**"CSV validation failed" error:**
+- Ensure all required fields (hostname, environment, status) are filled
+- Check for proper CSV formatting (commas, no extra spaces)
+
+### 💡 Advanced Adding Systems
+
+#### Using CSV Template
+```bash
+# Create a new CSV template for reference
+python scripts/ansible_inventory_cli.py validate --create-csv new_systems.csv
+```
+
+#### Bulk Adding Systems
+```bash
+# Add multiple systems at once by editing CSV
+# Then generate and validate
+python scripts/ansible_inventory_cli.py generate --dry-run  # Test first
+python scripts/ansible_inventory_cli.py generate           # Apply changes
+```
+
+#### Environment-Specific Adding
+```bash
+# Generate only specific environments after adding systems
+python scripts/ansible_inventory_cli.py generate --environments production
+```
+
 ## Next Steps
 
 Now that you have the basics working:
 
 1. **Customize your configuration** for your specific environment
-2. **Add more hosts** to your CSV file
+2. **Add more hosts** using the workflow above
 3. **Create more group_vars files** for your applications and products
 4. **Build playbooks** that leverage the inventory structure
 5. **Set up CI/CD** to automatically generate inventory
-6. **Explore advanced features** like lifecycle management and patch management
+6. **Explore advanced features** like lifecycle management and health monitoring
 
 Congratulations! You now have a fully functional Ansible inventory management system. 
