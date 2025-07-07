@@ -196,7 +196,7 @@ def _clean_csv_row(row: Dict[str, str]) -> Dict[str, str]:
     cleaned_row = {}
 
     for k, v in row.items():
-        if k == "product_id" and v:
+        if k == "product_id":
             # Handle None values in product_id
             if v is None:
                 cleaned_row[k] = ""
