@@ -81,6 +81,11 @@ ansible product_web -i inventory/production.yml --list-hosts
 
 # Target hosts in use1 site
 ansible site_use1 -i inventory/production.yml --list-hosts
+
+# Target hosts by batch number for controlled deployments
+ansible batch_1 -i inventory/production.yml --list-hosts
+ansible batch_2 -i inventory/production.yml --list-hosts
+ansible batch_3 -i inventory/production.yml --list-hosts
 ```
 
 ### Complex Targeting
@@ -97,6 +102,11 @@ ansible-playbook monitoring.yml -i inventory/production.yml \
 ansible-playbook patch.yml -i inventory/development.yml \
   --limit "env_development" \
   --extra-vars "patch_mode=auto"
+
+# Staged deployment by batch (rolling deployment pattern)
+ansible-playbook deploy.yml -i inventory/production.yml --limit batch_1
+ansible-playbook deploy.yml -i inventory/production.yml --limit batch_2
+ansible-playbook deploy.yml -i inventory/production.yml --limit batch_3
 ```
 
 ### Playbook Examples
@@ -195,6 +205,9 @@ all
 │   ├── app_api_server
 │   │   ├── product_api
 │   │   └── product_logging
+│   ├── batch_1
+│   ├── batch_2
+│   ├── batch_3
 │   └── site_use1
 └── env_development
     └── app_web_server
@@ -234,6 +247,7 @@ field_mappings:
     - product_4
     - site_code
     - dashboard_group
+    - batch_number
 ```
 
 ### Environment Variables

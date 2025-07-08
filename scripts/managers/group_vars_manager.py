@@ -49,6 +49,8 @@ class GroupVarsManager:
                 required_group_names.add(f"site_{host.site_code}.yml")
             if host.dashboard_group:
                 required_group_names.add(f"dashboard_{host.dashboard_group}.yml")
+            if host.batch_number:
+                required_group_names.add(f"batch_{host.batch_number}.yml")
 
         orphaned_count = 0
         for file_path in self.group_vars_dir.glob("*.yml"):
