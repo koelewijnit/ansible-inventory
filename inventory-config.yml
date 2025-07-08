@@ -208,4 +208,5 @@ field_mappings:
     - product_3           # Creates product_{value} groups
     - product_4           # Creates product_{value} groups
     - site_code          # Creates site_{value} groups
-    - dashboard_group    # Creates dashboard_{value} groups 
+    - dashboard_group    # Creates dashboard_{value} groups
+    - batch_number       # Creates batch_{value} groups 

@@ -424,6 +424,15 @@ class InventoryManager:
                     inventory[env_group_name]["children"][site_group] = {}
                     inventory[site_group]["hosts"][host_key] = {}
 
+            # Add batch_number group if available (as child of environment group)
+            if host.batch_number:
+                batch_group = host.get_batch_group_name()
+                if batch_group:
+                    if batch_group not in inventory:
+                        inventory[batch_group] = {"hosts": {}, "children": {}}
+                    inventory[env_group_name]["children"][batch_group] = {}
+                    inventory[batch_group]["hosts"][host_key] = {}
+
         return dict(inventory)
 
     def write_inventory_file(

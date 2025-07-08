@@ -194,6 +194,12 @@ class Host:
             return f"app_{self.application_service}"
         return None
 
+    def get_batch_group_name(self) -> Optional[str]:
+        """Get batch group name for inventory."""
+        if self.batch_number:
+            return f"batch_{self.batch_number}"
+        return None
+
     def get_product_ids(self) -> List[str]:
         """Return a list of product IDs for this host.
 
