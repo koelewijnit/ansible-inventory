@@ -44,28 +44,40 @@ def create_host_vars_from_csv(csv_file):
     return hosts_created
 
 
-def create_simple_inventory():
-    """Create a minimal inventory file"""
+def create_simple_inventory(csv_file):
+    """Create a base inventory file with all hosts listed"""
     
     inventory_file = Path('inventory/hosts.yml')
     inventory_file.parent.mkdir(parents=True, exist_ok=True)
     
-    # Simple inventory - just defines all hosts
+    # Read CSV to get all hostnames
+    hosts = []
+    with open(csv_file, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            hostname = row.get('hostname')
+            if hostname:
+                hosts.append(hostname.strip())
+    
+    # Create inventory with all hosts listed
     simple_inventory = {
         'all': {
-            'children': {
-                'ungrouped': {}
-            }
+            'hosts': {}
         }
     }
     
+    # Add all hosts to the inventory
+    for hostname in hosts:
+        simple_inventory['all']['hosts'][hostname] = {}
+    
     with open(inventory_file, 'w', encoding='utf-8') as f:
         f.write("---\n")
-        f.write("# Simple inventory file\n")
-        f.write("# Groups are created dynamically by constructed.yml\n\n")
+        f.write("# Base inventory file with all hosts\n")
+        f.write("# Groups are created dynamically by constructed.yml\n")
+        f.write("# Host variables are loaded from host_vars/ directory\n\n")
         yaml.dump(simple_inventory, f, default_flow_style=False)
     
-    print(f"✓ Created simple inventory: {inventory_file}")
+    print(f"✓ Created base inventory with {len(hosts)} hosts: {inventory_file}")
     return inventory_file
 
 
@@ -77,6 +89,7 @@ def create_constructed_config():
     constructed_config = {
         'plugin': 'constructed',
         'strict': False,
+        'sources': ['hosts.yml'],
         'compose': {
             # Create useful composed variables
             'env_batch': 'environment + "_" + (batch_number | string)',
@@ -280,8 +293,8 @@ def main():
         # Convert CSV to host_vars
         hosts_created = create_host_vars_from_csv(csv_file)
         
-        # Create simple inventory
-        create_simple_inventory()
+        # Create simple inventory with hosts
+        create_simple_inventory(csv_file)
         
         # Create constructed configuration
         create_constructed_config()

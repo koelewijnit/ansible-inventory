@@ -40,4 +40,6 @@ keyed_groups:
   prefix: status
   separator: _
 plugin: constructed
+sources:
+- hosts.yml
 strict: false
