@@ -1,6 +1,0 @@
-hostname,cname,environment,group_path,application_service,product_id,batch_number,patch_mode,dashboard_group,primary_application,function,site_code,instance,ssl_port,status,decommission_date
-test-web-01,test-web-01.example.com,production,/prod/web,web_server,web,1,auto,Web,WebApp,frontend,us-east-1,1,443,active,
-test-api-01,test-api-01.example.com,production,/prod/api,api_server,api,2,auto,API,APIService,backend,us-east-1,1,8080,active,
-test-db-01,test-db-01.example.com,production,/prod/db,database_server,db,3,manual,Database,DBService,database,us-east-1,1,5432,active,
-dev-web-01,dev-web-01.example.com,development,/dev/web,web_server,web,1,auto,Web,WebApp,frontend,us-east-1,1,443,active,
-dev-api-01,dev-api-01.example.com,development,/dev/api,api_server,api,2,auto,API,APIService,backend,us-east-1,1,8080,active, 

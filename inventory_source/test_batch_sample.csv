@@ -1,9 +1,0 @@
-hostname,environment,status,application_service,product_1,batch_number,site_code,cname
-test-web-01,production,active,web_server,web,1,us-east-1,test-web-01.example.com
-test-api-01,production,active,api_server,api,2,us-east-1,test-api-01.example.com
-test-db-01,production,active,database_server,db,3,us-east-1,test-db-01.example.com
-dev-web-01,development,active,web_server,web,1,us-east-1,dev-web-01.example.com
-dev-api-01,development,active,api_server,api,2,us-east-1,dev-api-01.example.com
-dev-db-01,development,active,database_server,db,1,us-east-1,dev-db-01.example.com
-test-monitor-01,test,active,monitoring_server,monitoring,3,us-east-1,test-monitor-01.example.com
-test-cache-01,test,active,cache_server,cache,2,us-east-1,test-cache-01.example.com

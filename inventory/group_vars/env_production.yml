@@ -1,5 +1,0 @@
-# inventory/group_vars/env_production.yml
-# Production environment-specific policies and configurations
-
-# Environment identification
-environment_tag: "production"

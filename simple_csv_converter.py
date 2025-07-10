@@ -270,9 +270,10 @@ def main():
     print("=" * 50)
     
     # Check if CSV file exists
-    csv_file = 'test_batch_sample.csv'
+    csv_file = 'inventory_source/sample_hosts.csv'
     if not Path(csv_file).exists():
         print(f"❌ CSV file not found: {csv_file}")
+        print("Please ensure your CSV file exists in inventory_source/")
         sys.exit(1)
     
     try:
