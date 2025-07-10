@@ -1,7 +1,9 @@
 ---
-# Host variables for web01
+# Host variables for dev-db-01
 # Generated from enhanced CSV with CMDB and patch management fields
 
-hostname: web01
+batch_number: '1'
+cname: dev-db-01.example.com
+hostname: dev-db-01
 status: active
 support_group: ''

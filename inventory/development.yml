@@ -5,30 +5,52 @@
 # ----------------------------------------------------------------------
 # Development Environment Inventory
 # Generated from enhanced CSV with CMDB and patch management integration
-# Generated at: 2025-07-07 13:21:11
+# Generated at: 2025-07-10 12:10:45
 
 app_api_server:
   children:
     product_api: {}
   hosts:
     dev-api-01: {}
+app_database_server:
+  children:
+    product_db: {}
+  hosts:
+    dev-db-01: {}
 app_web_server:
   children:
     product_web: {}
   hosts:
     dev-web-01: {}
+batch_1:
+  children: {}
+  hosts:
+    dev-db-01: {}
+    dev-web-01: {}
+batch_2:
+  children: {}
+  hosts:
+    dev-api-01: {}
 env_development:
   children:
     app_api_server: {}
+    app_database_server: {}
     app_web_server: {}
+    batch_1: {}
+    batch_2: {}
     site_us_east_1: {}
   hosts:
     dev-api-01: {}
+    dev-db-01: {}
     dev-web-01: {}
 product_api:
   children: {}
   hosts:
     dev-api-01: {}
+product_db:
+  children: {}
+  hosts:
+    dev-db-01: {}
 product_web:
   children: {}
   hosts:
@@ -37,4 +59,5 @@ site_us_east_1:
   children: {}
   hosts:
     dev-api-01: {}
+    dev-db-01: {}
     dev-web-01: {}

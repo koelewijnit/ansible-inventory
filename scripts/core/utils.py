@@ -7,7 +7,6 @@ management scripts to eliminate code duplication and ensure consistency.
 
 import contextlib
 import csv
-import fcntl
 import logging
 import os
 import re
@@ -20,6 +19,19 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 import yaml
+
+# Cross-platform file locking imports
+try:
+    import fcntl
+    HAS_FCNTL = True
+except ImportError:
+    HAS_FCNTL = False
+    # Windows-specific imports for file locking
+    try:
+        import msvcrt
+        HAS_MSVCRT = True
+    except ImportError:
+        HAS_MSVCRT = False
 
 from .models import ValidationResult
 
@@ -1152,9 +1164,61 @@ def log_security_event(event_type: str, details: str, level: str = "INFO") -> No
     log_func(f"SECURITY_EVENT: {event_type} - {details}")
 
 
+def _lock_file_unix(file_handle, timeout: int = 30) -> None:
+    """Unix/Linux file locking using fcntl."""
+    import time
+    start_time = time.time()
+    
+    while True:
+        try:
+            # Try to acquire exclusive lock (non-blocking)
+            fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except OSError:
+            # Lock not available, check timeout
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    f"Could not acquire file lock within {timeout} seconds"
+                )
+            time.sleep(0.1)  # Wait 100ms before retry
+
+
+def _unlock_file_unix(file_handle) -> None:
+    """Unix/Linux file unlocking using fcntl."""
+    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
+
+
+def _lock_file_windows(file_handle, timeout: int = 30) -> None:
+    """Windows file locking using msvcrt."""
+    import time
+    start_time = time.time()
+    
+    while True:
+        try:
+            # Try to lock the file (non-blocking)
+            msvcrt.locking(file_handle.fileno(), msvcrt.LK_NBLCK, 1)
+            break
+        except OSError:
+            # Lock not available, check timeout
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    f"Could not acquire file lock within {timeout} seconds"
+                )
+            time.sleep(0.1)  # Wait 100ms before retry
+
+
+def _unlock_file_windows(file_handle) -> None:
+    """Windows file unlocking using msvcrt."""
+    try:
+        msvcrt.locking(file_handle.fileno(), msvcrt.LK_UNLCK, 1)
+    except OSError:
+        # File might already be unlocked
+        pass
+
+
 @contextlib.contextmanager
 def file_lock(file_path: Path, mode: str = "r", timeout: int = 30) -> Generator:
-    """Context manager for file locking to prevent concurrent access.
+    """Context manager for cross-platform file locking to prevent concurrent access.
 
     Args:
         file_path: Path to the file to lock
@@ -1167,40 +1231,45 @@ def file_lock(file_path: Path, mode: str = "r", timeout: int = 30) -> Generator:
     Raises:
         TimeoutError: If lock cannot be acquired within timeout
         OSError: If file operations fail
+        RuntimeError: If no locking mechanism is available
     """
     import time
 
     logger = get_logger(__name__)
     file_handle = None
-    start_time = time.time()
 
     try:
         # Open file
         file_handle = open(file_path, mode, encoding="utf-8")
 
-        # Try to acquire lock with timeout
-        while True:
-            try:
-                # Try to acquire exclusive lock (non-blocking)
-                fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                log_security_event("FILE_LOCK", f"Acquired lock on {file_path}")
-                break
-            except OSError:
-                # Lock not available, check timeout
-                if time.time() - start_time > timeout:
-                    raise TimeoutError(
-                        f"Could not acquire file lock within {timeout} seconds"
-                    )
-                time.sleep(0.1)  # Wait 100ms before retry
+        # Choose locking mechanism based on platform
+        if HAS_FCNTL:
+            # Unix/Linux/macOS
+            _lock_file_unix(file_handle, timeout)
+            log_security_event("FILE_LOCK", f"Acquired lock on {file_path} (Unix)")
+        elif HAS_MSVCRT:
+            # Windows
+            _lock_file_windows(file_handle, timeout)
+            log_security_event("FILE_LOCK", f"Acquired lock on {file_path} (Windows)")
+        else:
+            # No locking mechanism available - log warning but continue
+            logger.warning(f"No file locking mechanism available on this platform")
+            log_security_event("FILE_LOCK", f"No lock available for {file_path} (unsupported platform)")
 
         yield file_handle
 
     finally:
         if file_handle:
             try:
-                # Release lock
-                fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
-                log_security_event("FILE_UNLOCK", f"Released lock on {file_path}")
+                # Release lock based on platform
+                if HAS_FCNTL:
+                    _unlock_file_unix(file_handle)
+                    log_security_event("FILE_UNLOCK", f"Released lock on {file_path} (Unix)")
+                elif HAS_MSVCRT:
+                    _unlock_file_windows(file_handle)
+                    log_security_event("FILE_UNLOCK", f"Released lock on {file_path} (Windows)")
+                else:
+                    log_security_event("FILE_UNLOCK", f"No unlock needed for {file_path} (unsupported platform)")
             except OSError as e:
                 logger.warning(f"Failed to release file lock: {e}")
             finally:

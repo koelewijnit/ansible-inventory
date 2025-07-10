@@ -1,0 +1,9 @@
+---
+# Host variables for test-api-01
+# Generated from enhanced CSV with CMDB and patch management fields
+
+batch_number: '2'
+cname: test-api-01.example.com
+hostname: test-api-01
+status: active
+support_group: ''

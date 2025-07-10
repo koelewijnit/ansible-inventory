@@ -1,5 +1,0 @@
-# inventory/group_vars/env_acceptance.yml
-# Acceptance environment-specific policies and configurations
-
-# Environment identification
-environment_tag: "acceptance" 

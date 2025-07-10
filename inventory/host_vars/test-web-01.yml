@@ -1,0 +1,9 @@
+---
+# Host variables for test-web-01
+# Generated from enhanced CSV with CMDB and patch management fields
+
+batch_number: '1'
+cname: test-web-01.example.com
+hostname: test-web-01
+status: active
+support_group: ''
