@@ -1,9 +1,12 @@
 ---
 # Host variables for test-monitor-01
-# Generated from enhanced CSV with CMDB and patch management fields
+# Auto-generated from CSV
 
+application_service: monitoring_server
 batch_number: '3'
 cname: test-monitor-01.example.com
+environment: test
 hostname: test-monitor-01
+product_1: monitoring
+site_code: us-east-1
 status: active
-support_group: ''

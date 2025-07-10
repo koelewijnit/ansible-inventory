@@ -1,9 +1,12 @@
 ---
 # Host variables for test-web-01
-# Generated from enhanced CSV with CMDB and patch management fields
+# Auto-generated from CSV
 
+application_service: web_server
 batch_number: '1'
 cname: test-web-01.example.com
+environment: production
 hostname: test-web-01
+product_1: web
+site_code: us-east-1
 status: active
-support_group: ''

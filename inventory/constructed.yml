@@ -1,0 +1,43 @@
+---
+# Ansible constructed inventory plugin configuration
+# This creates groups dynamically based on host variables
+# Usage: ansible-inventory -i inventory/constructed.yml --list
+
+compose:
+  app_env: application_service + "_" + environment
+  env_batch: environment + "_" + (batch_number | string)
+  site_env: site_code + "_" + environment
+groups:
+  active_hosts: status == "active"
+  api_servers: application_service == "api_server"
+  db_servers: application_service == "database_server"
+  development_batch_1: environment == "development" and batch_number == "1"
+  development_batch_2: environment == "development" and batch_number == "2"
+  development_hosts: environment == "development"
+  production_batch_1: environment == "production" and batch_number == "1"
+  production_batch_2: environment == "production" and batch_number == "2"
+  production_batch_3: environment == "production" and batch_number == "3"
+  production_hosts: environment == "production"
+  test_hosts: environment == "test"
+  web_servers: application_service == "web_server"
+keyed_groups:
+- key: batch_number
+  prefix: batch
+  separator: _
+- key: environment
+  prefix: env
+  separator: _
+- key: application_service
+  prefix: app
+  separator: _
+- key: product_1
+  prefix: product
+  separator: _
+- key: site_code
+  prefix: site
+  separator: _
+- key: status
+  prefix: status
+  separator: _
+plugin: constructed
+strict: false
