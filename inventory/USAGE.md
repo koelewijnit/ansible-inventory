@@ -2,9 +2,8 @@
 
 ## Files Created
 
-- `inventory/hosts.yml` - Simple base inventory
+- `inventory/hosts.yml` - Base inventory with embedded host variables
 - `inventory/constructed.yml` - Dynamic group configuration
-- `inventory/host_vars/*.yml` - Individual host variables
 
 ## Usage Examples
 
@@ -92,7 +91,7 @@ The simplified system provides the same functionality:
 - ✅ Application groups (`app_web_server`, etc.)
 - ✅ Product groups (`product_web`, etc.)
 - ✅ Site groups (`site_us_east_1`, etc.)
-- ✅ Host variables (in `host_vars/` files)
+|- ✅ Host variables (embedded in hosts.yml)
 - ✅ All Ansible commands work the same way
 
 But with much less code to maintain!
