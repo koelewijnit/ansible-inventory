@@ -1,0 +1,4 @@
+hostname,datacenter,team,role,priority,os_version,custom_field
+server-01,dc-east,devops,webserver,high,ubuntu-20.04,value1
+server-02,dc-west,database,dbserver,critical,rhel-8,value2
+server-03,dc-central,security,firewall,medium,centos-7,value3
