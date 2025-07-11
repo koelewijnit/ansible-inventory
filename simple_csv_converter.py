@@ -9,75 +9,49 @@ import sys
 from pathlib import Path
 
 
-def create_host_vars_from_csv(csv_file):
-    """Convert CSV to host_vars files - let Ansible handle grouping"""
+def read_csv_data(csv_file):
+    """Read CSV data and return host information"""
     
-    print(f"Converting {csv_file} to host_vars files...")
+    print(f"Reading CSV data from {csv_file}...")
     
-    # Ensure directories exist
-    host_vars_dir = Path('inventory/host_vars')
-    host_vars_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Read CSV and create host_vars files
-    hosts_created = 0
+    hosts_data = {}
     with open(csv_file, 'r', newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             hostname = row.get('hostname')
             if hostname:
-                # Create host_vars file
-                host_vars_file = host_vars_dir / f"{hostname}.yml"
-                
                 # Clean up empty values
                 clean_vars = {k: v for k, v in row.items() if v and v.strip()}
-                
-                with open(host_vars_file, 'w', encoding='utf-8') as hf:
-                    hf.write(f"---\n")
-                    hf.write(f"# Host variables for {hostname}\n")
-                    hf.write(f"# Auto-generated from CSV\n\n")
-                    yaml.dump(clean_vars, hf, default_flow_style=False, sort_keys=True)
-                
-                hosts_created += 1
-                print(f"  Created: {host_vars_file}")
+                hosts_data[hostname] = clean_vars
     
-    print(f"✓ Created {hosts_created} host_vars files")
-    return hosts_created
+    print(f"✓ Read {len(hosts_data)} hosts from CSV")
+    return hosts_data
 
 
-def create_simple_inventory(csv_file):
-    """Create a base inventory file with all hosts listed"""
+def create_simple_inventory(hosts_data):
+    """Create a base inventory file with all hosts and variables embedded"""
     
     inventory_file = Path('inventory/hosts.yml')
     inventory_file.parent.mkdir(parents=True, exist_ok=True)
     
-    # Read CSV to get all hostnames
-    hosts = []
-    with open(csv_file, 'r', newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            hostname = row.get('hostname')
-            if hostname:
-                hosts.append(hostname.strip())
-    
-    # Create inventory with all hosts listed
+    # Create inventory with all hosts and variables
     simple_inventory = {
         'all': {
             'hosts': {}
         }
     }
     
-    # Add all hosts to the inventory
-    for hostname in hosts:
-        simple_inventory['all']['hosts'][hostname] = {}
+    # Add all hosts and their variables to the inventory
+    for hostname, variables in hosts_data.items():
+        simple_inventory['all']['hosts'][hostname] = variables
     
     with open(inventory_file, 'w', encoding='utf-8') as f:
         f.write("---\n")
-        f.write("# Base inventory file with all hosts\n")
-        f.write("# Groups are created dynamically by constructed.yml\n")
-        f.write("# Host variables are loaded from host_vars/ directory\n\n")
+        f.write("# Base inventory file with all hosts and variables listed\n")
+        f.write("# Groups are created dynamically by constructed.yml\n\n")
         yaml.dump(simple_inventory, f, default_flow_style=False)
     
-    print(f"✓ Created base inventory with {len(hosts)} hosts: {inventory_file}")
+    print(f"✓ Created base inventory with {len(hosts_data)} hosts and variables: {inventory_file}")
     return inventory_file
 
 
@@ -173,9 +147,8 @@ def create_usage_examples():
 
 ## Files Created
 
-- `inventory/hosts.yml` - Simple base inventory
+- `inventory/hosts.yml` - Base inventory with embedded host variables
 - `inventory/constructed.yml` - Dynamic group configuration
-- `inventory/host_vars/*.yml` - Individual host variables
 
 ## Usage Examples
 
@@ -263,7 +236,7 @@ The simplified system provides the same functionality:
 - ✅ Application groups (`app_web_server`, etc.)
 - ✅ Product groups (`product_web`, etc.)
 - ✅ Site groups (`site_us_east_1`, etc.)
-- ✅ Host variables (in `host_vars/` files)
+|- ✅ Host variables (embedded in hosts.yml)
 - ✅ All Ansible commands work the same way
 
 But with much less code to maintain!
@@ -290,11 +263,11 @@ def main():
         sys.exit(1)
     
     try:
-        # Convert CSV to host_vars
-        hosts_created = create_host_vars_from_csv(csv_file)
+        # Read CSV data
+        hosts_data = read_csv_data(csv_file)
         
         # Create simple inventory with hosts
-        create_simple_inventory(csv_file)
+        create_simple_inventory(hosts_data)
         
         # Create constructed configuration
         create_constructed_config()
@@ -304,7 +277,7 @@ def main():
         
         print("\n" + "=" * 50)
         print("✅ Simplified inventory system created successfully!")
-        print(f"✅ Converted {hosts_created} hosts from CSV")
+        print(f"✅ Converted {len(hosts_data)} hosts from CSV")
         print("\nNext steps:")
         print("1. Test the inventory:")
         print("   ansible-inventory -i inventory/constructed.yml --list")
