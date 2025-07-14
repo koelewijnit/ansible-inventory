@@ -26,13 +26,20 @@ def read_csv_data(csv_file):
             print("❌ CSV must contain a 'hostname' column")
             sys.exit(1)
         
+        has_cname = 'cname' in reader.fieldnames
         print(f"✓ Detected CSV headers: {list(reader.fieldnames)}")
+        if has_cname:
+            print("✓ Found 'cname' column - will use cname as inventory host key when available")
         
         for row in reader:
             hostname = row.get('hostname')
             if hostname:
+                # Use cname as inventory key if available, otherwise use hostname
+                cname = row.get('cname', '').strip()
+                inventory_key = cname if cname else hostname
+                
                 # Include all fields, keeping empty values as empty strings
-                hosts_data[hostname] = dict(row)
+                hosts_data[inventory_key] = dict(row)
     
     print(f"✓ Read {len(hosts_data)} hosts from CSV")
     return hosts_data
